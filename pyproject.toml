@@ -32,11 +32,14 @@ dependencies = [
     "jinja2>=3.1.0",
     # spdx-validator dependencies
     "jsonschema>=4.25.1",
+    # spdx3-validator dependencies
+    "spdx3-validate==0.0.7"
 ]
 
 [project.scripts]
 sbom-check = "sbom_check.cli:main"
 spdx-validate = "spdx_validator.cli:main"
+sbom-check-spdx3 = "spdx3_validator.cli:main"
 
 [dependency-groups]
 dev = [

@@ -1,6 +1,32 @@
-from dataclasses import dataclass
+"""Models used by the SPDX 3 validator."""
 
-from sbom_check.models import ValidationMessage
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
+
+
+class ValidationSeverity(str, Enum):
+    """Severity levels for validation messages."""
+
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+
+
+@dataclass
+class ValidationMessage:
+    """A validation message with optional diagnostic context."""
+
+    severity: ValidationSeverity
+    message: str
+    rule_id: str | None = None
+    field_path: str | None = None
+    affected_element: str | None = None
+    section_reference: str | None = None
+    found_value: Any | None = None
+    expected_value: Any | None = None
+    remediation: str | None = None
+
 
 @dataclass
 class ValidationResult:

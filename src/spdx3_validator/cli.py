@@ -36,7 +36,7 @@ def validate_single_file(
 ) -> tuple[Path, ValidationResult]:
     """Validate a single SPDX 3.0.1 file."""
     engine = ValidationEngine()
-    result = engine.validate(file_path)
+    result = engine.validate(file_path=file_path)
     return file_path, result
 
 

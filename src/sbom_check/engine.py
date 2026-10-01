@@ -158,7 +158,7 @@ class SbomCheckEngine:
             spec_version = detected.spec_version
 
         # Run the selected format engine.
-        core_result = selected_engine.validate(sbom_data)
+        core_result = selected_engine.validate(sbom_data, file_path=file_path)
 
         # The completeness profile is SPDX-specific.
         profile_result = (

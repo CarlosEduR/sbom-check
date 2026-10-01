@@ -300,7 +300,7 @@ def main(  # noqa: PLR0917,RUF100
     generate_config: bool,
     validate_config: str | None,
 ) -> None:
-    """Validate SPDX and CycloneDX JSON SBOM documents.
+    """Validate SPDX JSON SBOM documents.
 
     PATHS can be individual files or directories. When directories are provided,
     they will be scanned for SBOM files matching the specified pattern.

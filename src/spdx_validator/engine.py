@@ -49,7 +49,7 @@ class ValidationEngine(ValidatorEngine):
             self.semantic_validator = SemanticValidator()
 
     def validate(
-        self, document: dict[str, Any], spec_version: str = "SPDX-2.3"
+        self, document: dict[str, Any], spec_version: str | None = None, file_path: Path | None = None
     ) -> ValidationResult:
         """Validate a parsed SPDX document through the engine pipeline."""
         del spec_version

@@ -20,7 +20,7 @@ class TestSpdx3ValidationIntegration:
 
     def test_valid_minimal_document(self) -> None:
         """Validate a minimal SPDX 3.0.1 document successfully."""
-        result = ValidationEngine().validate_file(str(MINIMAL_DOCUMENT))
+        result = ValidationEngine().validate(file_path=str(MINIMAL_DOCUMENT))
 
         assert result.is_valid is True
         assert result.schema_valid is True
@@ -39,7 +39,7 @@ class TestSpdx3ValidationIntegration:
         invalid_document = tmp_path / "missing-agent-type.spdx.json"
         invalid_document.write_text(json.dumps(document_data), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(invalid_document))
+        result = ValidationEngine().validate(file_path=str(invalid_document))
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -62,7 +62,7 @@ class TestSpdx3ValidationIntegration:
 
         monkeypatch.setattr(socket.socket, "connect", deny_network)
 
-        result = ValidationEngine().validate_file(str(MINIMAL_DOCUMENT))
+        result = ValidationEngine().validate(file_path=str(MINIMAL_DOCUMENT))
 
         assert result.is_valid is False
         assert result.schema_valid is True
@@ -80,7 +80,7 @@ class TestSpdx3ValidationIntegration:
         invalid_document = tmp_path / "invalid-shacl.spdx.json"
         invalid_document.write_text(json.dumps(document_data), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(invalid_document))
+        result = ValidationEngine().validate(file_path=str(invalid_document))
 
         assert result.is_valid is False
         assert result.semantic_valid is False
@@ -99,7 +99,7 @@ class TestSpdx3ValidationIntegration:
         unknown_version = tmp_path / "unknown-version.spdx.json"
         unknown_version.write_text(json.dumps(document_data), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(unknown_version))
+        result = ValidationEngine().validate(file_path=str(unknown_version))
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -117,7 +117,7 @@ class TestSpdx3ValidationIntegration:
         incompatible_version = tmp_path / "incompatible-version.spdx.json"
         incompatible_version.write_text(json.dumps(document_data), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(incompatible_version))
+        result = ValidationEngine().validate(file_path=str(incompatible_version))
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -137,7 +137,7 @@ class TestSpdx3ValidationIntegration:
         missing_agent = tmp_path / "missing-agent.spdx.json"
         missing_agent.write_text(json.dumps(document_data), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(missing_agent))
+        result = ValidationEngine().validate(file_path=str(missing_agent))
 
         assert result.is_valid is False
         assert result.schema_valid is True
@@ -165,7 +165,7 @@ class TestSpdx3ValidationIntegration:
         invalid_document = tmp_path / "invalid-json.spdx.json"
         invalid_document.write_text('{"@context":', encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(invalid_document))
+        result = ValidationEngine().validate(file_path=str(invalid_document))
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -179,7 +179,7 @@ class TestSpdx3ValidationIntegration:
         document = tmp_path / "missing-context.spdx.json"
         document.write_text(json.dumps({"@graph": []}), encoding="utf-8")
 
-        result = ValidationEngine().validate_file(str(document))
+        result = ValidationEngine().validate(file_path=str(document))
 
         assert result.is_valid is False
         assert result.schema_valid is False

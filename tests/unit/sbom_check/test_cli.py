@@ -18,7 +18,7 @@ def test_cli_help():
     result = runner.invoke(main, ["--help"])
 
     assert result.exit_code == 0
-    assert "Validate SPDX 2.3 SBOM documents" in result.output
+    assert "Validate SPDX JSON SBOM documents" in result.output
     assert "--profile" in result.output
     assert "--config" in result.output
     assert "--output-format" in result.output

@@ -1,6 +1,7 @@
 from json import JSONDecodeError
 from urllib.error import URLError
 from pathlib import Path
+from typing import Any
 
 from spdx3_validate import validate
 
@@ -44,7 +45,7 @@ class ValidationEngine(ValidatorEngine):
 
         return unique
 
-    def validate(self, file_path: Path) -> ValidationResult:
+    def validate(self, document: dict[str, Any] | None = None, specVersion: str | None = None, file_path: Path | None = None) -> ValidationResult:
         """
         Validate SPDX 3.0.1 document from file.
 

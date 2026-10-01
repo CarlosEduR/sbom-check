@@ -207,8 +207,6 @@ Recursively scan directories for SBOM files:
 uv run sbom-check --recursive project-root/
 ```
 
-Directory scans default to `*.{spdx,cdx}.json` so unrelated JSON files are ignored. Use `--pattern` to select a different file pattern when needed.
-
 Use custom file pattern:
 ```bash
 uv run sbom-check --pattern "*.json" --recursive project/
@@ -277,7 +275,7 @@ Options:
   --config PATH                Custom configuration file to use
   --output-format [text|json]  Output format (default: text)
   -r, --recursive              Recursively scan directories for SBOM files
-  --pattern TEXT               File pattern to match when scanning directories (default: *.{spdx,cdx}.json)
+  --pattern TEXT               File pattern to match when scanning directories (default: *.spdx.json)
   -j, --jobs INTEGER           Number of parallel jobs for validation (default: number of CPU cores)
   --list-profiles              List available configuration profiles
   --generate-config            Generate a configuration template

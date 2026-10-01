@@ -12,7 +12,6 @@ from sbom_check.models import DocumentFormat
 from spdx_validator.engine import ValidationEngine
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 
-
 SPDX_VERSION = "SPDX-2.3"
 
 
@@ -56,7 +55,13 @@ def detect_document(data: Any) -> DetectedDocument:
 
     has_spdx_marker = any(
         marker in data
-        for marker in ("SPDXID", "documentNamespace", "creationInfo", "dataLicense", "spdxVersion")
+        for marker in (
+            "SPDXID",
+            "documentNamespace",
+            "creationInfo",
+            "dataLicense",
+            "spdxVersion",
+        )
     )
 
     if has_spdx_marker:
@@ -75,11 +80,10 @@ def detect_document(data: Any) -> DetectedDocument:
 def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
     version = data.get("spdxVersion")
     spec_version = (
-        version.removeprefix("SPDX-")
-        if isinstance(version, str) and version
-        else None
+        version.removeprefix("SPDX-") if isinstance(version, str) and version else None
     )
     return DetectedDocument(DocumentFormat.SPDX, spec_version, ValidationEngine)
+
 
 def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
     graph = data.get("@graph")
@@ -93,6 +97,7 @@ def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
                 break
 
     return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
+
 
 __all__ = [
     "SPDX_VERSION",

@@ -46,7 +46,9 @@ def collect_sbom_files(
             else:
                 files.extend(p.resolve() for p in path.glob(pattern))
         else:
-            console.print(f"[yellow]Warning: {path} is neither a file nor directory[/yellow]")
+            console.print(
+                f"[yellow]Warning: {path} is neither a file nor directory[/yellow]"
+            )
 
     # Sort for consistent output
     return sorted(files)
@@ -103,11 +105,15 @@ def output_text_multiple(results: list[tuple[Path, Any]]) -> None:
     # Color-coded overall summary
     console.print("=" * 80)
     if valid_files == total_files:
-        summary_text = f"[green]Overall: {valid_files}/{total_files} files valid ✅[/green]"
+        summary_text = (
+            f"[green]Overall: {valid_files}/{total_files} files valid ✅[/green]"
+        )
     elif valid_files == 0:
         summary_text = f"[red]Overall: {valid_files}/{total_files} files valid ❌[/red]"
     else:
-        summary_text = f"[yellow]Overall: {valid_files}/{total_files} files valid ⚠️[/yellow]"
+        summary_text = (
+            f"[yellow]Overall: {valid_files}/{total_files} files valid ⚠️[/yellow]"
+        )
 
     console.print(summary_text)
 
@@ -118,7 +124,9 @@ def output_json_multiple(results: list[tuple[Path, Any]]) -> None:
         "summary": {
             "total_files": len(results),
             "valid_files": sum(1 for _, result in results if result.overall_valid),
-            "invalid_files": sum(1 for _, result in results if not result.overall_valid),
+            "invalid_files": sum(
+                1 for _, result in results if not result.overall_valid
+            ),
         },
         "results": [
             {
@@ -397,7 +405,9 @@ def _result_profile_status(result: Any) -> ProfileStatus:
     if isinstance(value, ProfileStatus):
         return value
     if getattr(result, "document_format", "SPDX") == "SPDX":
-        return ProfileStatus.PASSED if bool(result.profile_valid) else ProfileStatus.FAILED
+        return (
+            ProfileStatus.PASSED if bool(result.profile_valid) else ProfileStatus.FAILED
+        )
     return ProfileStatus.NOT_APPLICABLE
 
 
@@ -414,9 +424,7 @@ def _print_text_result(result: Any, file_path: str) -> None:
 
     format_name = getattr(result, "document_format", "SPDX")
     format_name = getattr(format_name, "value", format_name)
-    specification = (
-        f" {result.spec_version}" if result.spec_version else ""
-    )
+    specification = f" {result.spec_version}" if result.spec_version else ""
     core_label = f"{format_name}{specification} Validation"
     if _result_core_valid(result):
         console.print(f"[green]✅ {core_label}: PASSED[/green]")

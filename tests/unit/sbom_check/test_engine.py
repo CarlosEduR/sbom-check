@@ -4,11 +4,12 @@
 """Unit tests for SBOM validation engine."""
 
 import json
+from copy import deepcopy
 from unittest.mock import Mock, patch
 
 from sbom_check.config.loader import ConfigLoader
 from sbom_check.engine import SbomCheckEngine
-from sbom_check.models import SbomCheckResult, ValidationSeverity
+from sbom_check.models import ProfileStatus, SbomCheckResult, ValidationSeverity
 
 
 def test_engine_initialization():
@@ -346,9 +347,9 @@ def test_document_namespace_http_url_allowed():
         for msg in result.messages
         if msg.severity == ValidationSeverity.ERROR and "scheme" in msg.message.lower()
     ]
-    assert len(scheme_errors) == 0, (
-        f"HTTP URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
-    )
+    assert (
+        len(scheme_errors) == 0
+    ), f"HTTP URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
 
 
 def test_document_namespace_https_url_allowed():
@@ -379,9 +380,9 @@ def test_document_namespace_https_url_allowed():
         for msg in result.messages
         if msg.severity == ValidationSeverity.ERROR and "scheme" in msg.message.lower()
     ]
-    assert len(scheme_errors) == 0, (
-        f"HTTPS URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
-    )
+    assert (
+        len(scheme_errors) == 0
+    ), f"HTTPS URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
 
 
 def test_document_namespace_fragment_prohibited():
@@ -413,6 +414,70 @@ def test_document_namespace_fragment_prohibited():
         if msg.severity == ValidationSeverity.ERROR
         and "fragment" in msg.message.lower()
     ]
-    assert len(fragment_errors) > 0, (
-        "Fragment identifiers should be prohibited in documentNamespace"
+    assert (
+        len(fragment_errors) > 0
+    ), "Fragment identifiers should be prohibited in documentNamespace"
+
+
+def test_missing_spdx_version_preserves_validator_and_profile_diagnostics(
+    sample_valid_spdx_document,
+):
+    document = deepcopy(sample_valid_spdx_document)
+    document.pop("spdxVersion")
+    document["packages"][0].pop("downloadLocation")
+    document["creationInfo"].pop("licenseListVersion")
+    document["relationships"] = []
+
+    result = SbomCheckEngine().validate_dict(document)
+    messages = [message.message for message in result.messages]
+
+    assert result.document_format == "SPDX"
+    assert len(messages) > 1
+    assert any("downloadLocation" in message for message in messages)
+    assert any("spdxVersion" in message for message in messages)
+    assert any("licenseListVersion" in message for message in messages)
+    assert any("DESCRIBES" in message for message in messages)
+
+
+def test_unsupported_spdx_version_preserves_validator_diagnostics(
+    sample_invalid_spdx_document,
+):
+    result = SbomCheckEngine().validate_dict(sample_invalid_spdx_document)
+    messages = [message.message for message in result.messages]
+
+    assert result.document_format == "SPDX"
+    assert len(messages) > 1
+    assert any("SPDX-2.2" in message or "SPDX-2.3" in message for message in messages)
+
+
+def test_engine_returns_structured_result_for_unsupported_input():
+    """Unsupported documents never fall through to SPDX validation."""
+    result = SbomCheckEngine().validate_dict({"format": "unknown"})
+
+    assert not result.overall_valid
+    assert result.document_format == "unknown"
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert result.messages[0].rule_id == "unsupported_format"
+
+
+def test_engine_auto_detects_spdx3_without_explicit_validator_class():
+    """Direct engine callers receive automatic format dispatch."""
+    result = SbomCheckEngine().validate_dict(
+        {
+            "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+            "@graph": [
+                {
+                    "@id": "_:ci",
+                    "type": "CreationInfo",
+                    "specVersion": "3.0.1",
+                    "created": "2024-01-01T00:00:00Z",
+                    "createdBy": ["https://example.com/agent"],
+                }
+            ],
+        }
     )
+
+    assert result.document_format == "SPDX3"
+    assert result.spec_version == "3.0.1"
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE

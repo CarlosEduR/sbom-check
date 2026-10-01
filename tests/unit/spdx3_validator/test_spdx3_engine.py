@@ -23,7 +23,7 @@ class TestValidationEngine:
         """Test successful validation without invoking the real validator."""
         mock_validate.return_value = CustomValidationResult()
 
-        result = ValidationEngine().validate_file("test.spdx.json")
+        result = ValidationEngine().validate("test.spdx.json")
 
         assert result.is_valid is True
         assert result.schema_valid is True
@@ -38,7 +38,7 @@ class TestValidationEngine:
             "No @context found in test.spdx.json"
         )
 
-        result = ValidationEngine().validate_file("test.spdx.json")
+        result = ValidationEngine().validate("test.spdx.json")
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -56,7 +56,7 @@ class TestValidationEngine:
             "test.spdx.json has unknown version"
         )
 
-        result = ValidationEngine().validate_file("test.spdx.json")
+        result = ValidationEngine().validate("test.spdx.json")
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -77,7 +77,7 @@ class TestValidationEngine:
         )
         mock_validate.return_value = CustomValidationResult(errors=[error])
 
-        result = ValidationEngine().validate_file("test.spdx.json")
+        result = ValidationEngine().validate("test.spdx.json")
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -106,7 +106,7 @@ class TestValidationEngine:
         )
         mock_validate.return_value = CustomValidationResult(errors=[error])
 
-        result = ValidationEngine().validate_file("test.spdx.json")
+        result = ValidationEngine().validate("test.spdx.json")
 
         assert result.is_valid is False
         assert result.schema_valid is True

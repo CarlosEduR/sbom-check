@@ -6,16 +6,16 @@ SPDX-License-Identifier: BSD-3-Clause
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
 
-A comprehensive SPDX 2.3 SBOM validator with configurable additional requirements for completeness validation.
+A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents. SPDX 2.3 documents receive configurable completeness requirements; SPDX 3.0.1 documents currently receive structural schema and semantic validation.
 
 ## Features
 
-- **SPDX 2.3 Compliance**: Integrated spdx-validator for core specification validation
-- **Dual CLI Tools**: Both `sbom-check` and `spdx-validate` commands available
+- **Multi-format validation**: Automatic detection and validation of SPDX 2.3 and SPDX 3.0.1 documents
+- **CLI Tools**: Both `sbom-check` and `spdx-validate` commands available
 - **Configurable Requirements**: YAML-based configuration system with inheritance
 - **Multiple Profiles**: Built-in profiles for different use cases (basic, default, automotive, etc.)
 - **Rich Reporting**: Text and JSON output formats with detailed error messages
-- **Schema Validation**: JSON Schema validation against SPDX specification
+- **Schema Validation**: JSON Schema validation against the declared document format and version
 - **Extensible**: Plugin system for custom validation rules
 
 ## Quick Start
@@ -207,6 +207,8 @@ Recursively scan directories for SBOM files:
 uv run sbom-check --recursive project-root/
 ```
 
+Directory scans default to `*.{spdx,cdx}.json` so unrelated JSON files are ignored. Use `--pattern` to select a different file pattern when needed.
+
 Use custom file pattern:
 ```bash
 uv run sbom-check --pattern "*.json" --recursive project/
@@ -275,7 +277,7 @@ Options:
   --config PATH                Custom configuration file to use
   --output-format [text|json]  Output format (default: text)
   -r, --recursive              Recursively scan directories for SBOM files
-  --pattern TEXT               File pattern to match when scanning directories (default: *.spdx.json)
+  --pattern TEXT               File pattern to match when scanning directories (default: *.{spdx,cdx}.json)
   -j, --jobs INTEGER           Number of parallel jobs for validation (default: number of CPU cores)
   --list-profiles              List available configuration profiles
   --generate-config            Generate a configuration template

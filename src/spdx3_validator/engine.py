@@ -3,10 +3,11 @@ from urllib.error import URLError
 from pathlib import Path
 
 from spdx3_validate import validate
+
+from sbom_validator.engine import ValidatorEngine
 from spdx3_validate.core import SpdxValidateError, UnknownVersionError
 from spdx3_validate.core import ValidationError as CustomValidationError
 from spdx3_validate.core import ValidationResult as CustomValidationResult
-
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
 from spdx3_validator.models import (
     ValidationMessage,
@@ -17,7 +18,7 @@ from spdx3_validator.models import (
 SPDX_VERSION = "3.0.1"
 
 
-class ValidationEngine:
+class ValidationEngine(ValidatorEngine):
     def __init__(self):
         """Initialize the validation engine for SPDX 3.0.1."""
 
@@ -43,7 +44,7 @@ class ValidationEngine:
 
         return unique
 
-    def validate_file(self, file_path: Path) -> ValidationResult:
+    def validate(self, file_path: Path) -> ValidationResult:
         """
         Validate SPDX 3.0.1 document from file.
 

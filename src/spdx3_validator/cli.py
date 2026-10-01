@@ -36,7 +36,7 @@ def validate_single_file(
 ) -> tuple[Path, ValidationResult]:
     """Validate a single SPDX 3.0.1 file."""
     engine = ValidationEngine()
-    result = engine.validate_file(file_path)
+    result = engine.validate(file_path)
     return file_path, result
 
 
@@ -146,9 +146,9 @@ def output_text_multiple(results: list[tuple[Path, ValidationResult]]) -> None:
     click.echo(f"Validated {total_files} files: {valid_text}, {invalid_text}")
     click.echo("=" * 80)
 
-    for file_path, result in results:
+    for index, (file_path, result) in enumerate(results):
         output_text(result, file_path)
-        if result != results[-1][1]:  # Not the last result
+        if index < total_files - 1:  # Not the last result
             click.echo()
 
     # Color-coded overall summary

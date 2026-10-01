@@ -29,92 +29,22 @@ from sbom_check.engine import SbomCheckEngine
 from sbom_check.models import ProfileStatus, ValidationSeverity
 
 console = Console()
-DEFAULT_SBOM_PATTERN = "*.{spdx,cdx}.json"
-
-
-MAX_PATTERN_EXPANSIONS = 1024
-
-
-def _expand_pattern(pattern: str) -> tuple[str, ...]:
-    """Expand brace alternatives recursively for filesystem globbing.
-
-    Empty alternatives are valid, but malformed brace ordering and unmatched
-    braces raise ``ValueError`` so the CLI can report the invalid pattern.
-    Expansion is capped to keep pathological user input bounded.
-    """
-    try:
-        return _expand_pattern_fragment(pattern)
-    except ValueError as error:
-        raise ValueError(f"Invalid brace pattern {pattern!r}: {error}") from None
-
-
-def _expand_pattern_fragment(pattern: str) -> tuple[str, ...]:
-    """Expand one pattern fragment while preserving the original error context."""
-    open_index = pattern.find("{")
-    close_index = pattern.find("}")
-    if open_index == -1 and close_index == -1:
-        return (pattern,)
-    if close_index != -1 and (open_index == -1 or close_index < open_index):
-        raise ValueError("unmatched '}'")
-
-    depth = 0
-    matching_close = None
-    for index in range(open_index, len(pattern)):
-        character = pattern[index]
-        if character == "{":
-            depth += 1
-        elif character == "}":
-            depth -= 1
-            if depth == 0:
-                matching_close = index
-                break
-
-    if matching_close is None:
-        raise ValueError("unmatched '{'")
-
-    prefix = pattern[:open_index]
-    contents = pattern[open_index + 1 : matching_close]
-    suffix = pattern[matching_close + 1 :]
-
-    alternatives: list[str] = []
-    start = 0
-    depth = 0
-    for index, character in enumerate(contents):
-        if character == "{":
-            depth += 1
-        elif character == "}":
-            depth -= 1
-        elif character == "," and depth == 0:
-            alternatives.append(contents[start:index])
-            start = index + 1
-    alternatives.append(contents[start:])
-
-    expanded: list[str] = []
-    for alternative in alternatives:
-        expanded.extend(_expand_pattern_fragment(f"{prefix}{alternative}{suffix}"))
-        if len(expanded) > MAX_PATTERN_EXPANSIONS:
-            raise ValueError(
-                f"expands to more than {MAX_PATTERN_EXPANSIONS} patterns"
-            )
-    return tuple(expanded)
 
 
 def collect_sbom_files(
-    paths: tuple[Path, ...], recursive: bool, pattern: str | None
+    paths: tuple[Path, ...], recursive: bool, pattern: str
 ) -> list[Path]:
     """Collect all SBOM files from the given paths."""
     files = []
-    patterns = _expand_pattern(pattern or DEFAULT_SBOM_PATTERN)
 
     for path in paths:
         if path.is_file():
             files.append(path.resolve())
         elif path.is_dir():
-            for current_pattern in patterns:
-                if recursive:
-                    files.extend(p.resolve() for p in path.rglob(current_pattern))
-                else:
-                    files.extend(p.resolve() for p in path.glob(current_pattern))
+            if recursive:
+                files.extend(p.resolve() for p in path.rglob(pattern))
+            else:
+                files.extend(p.resolve() for p in path.glob(pattern))
         else:
             console.print(f"[yellow]Warning: {path} is neither a file nor directory[/yellow]")
 
@@ -261,8 +191,8 @@ def output_json_multiple(results: list[tuple[Path, Any]]) -> None:
 )
 @click.option(
     "--pattern",
-    default="*.{spdx,cdx}.json",
-    help="File pattern to match when scanning directories (default: *.{spdx,cdx}.json)",
+    default="*.spdx.json",
+    help="File pattern to match when scanning directories (default: *.spdx.json)",
 )
 @click.option(
     "--jobs",

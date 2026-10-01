@@ -20,10 +20,25 @@ def test_detect_spdx_23() -> None:
     assert detected.validator_class is ValidationEngine
 
 def test_detect_spdx_3_0_1():
-    detected = detect_document({"@graph": []})
+    detected = detect_document(
+        {
+            "@graph": [
+                {"type": "SpdxDocument"},
+                {"type": "CreationInfo", "specVersion": "3.0.1"},
+            ]
+        }
+    )
 
     assert detected.format is DocumentFormat.SPDX3
     assert detected.spec_version == "3.0.1"
+    assert detected.validator_class is SPDX3ValidationEngine
+
+
+def test_detect_spdx3_without_creation_info_version() -> None:
+    detected = detect_document({"@graph": []})
+
+    assert detected.format is DocumentFormat.SPDX3
+    assert detected.spec_version is None
     assert detected.validator_class is SPDX3ValidationEngine
 
 

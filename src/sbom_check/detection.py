@@ -62,7 +62,7 @@ def detect_document(data: Any) -> DetectedDocument:
     if has_spdx_marker:
         return _detect_spdx(data)
 
-    has_spdx3_marker = "@graph" in data
+    has_spdx3_marker = isinstance(data.get("@graph"), list)
     if has_spdx3_marker:
         return _detect_spdx3(data)
 
@@ -82,7 +82,17 @@ def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
     return DetectedDocument(DocumentFormat.SPDX, spec_version, ValidationEngine)
 
 def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
-    return DetectedDocument(DocumentFormat.SPDX3, "3.0.1", SPDX3ValidationEngine)
+    graph = data.get("@graph")
+    spec_version = None
+
+    for item in graph:
+        if isinstance(item, dict) and item.get("type") == "CreationInfo":
+            version = item.get("specVersion")
+            if isinstance(version, str) and version:
+                spec_version = version
+                break
+
+    return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
 
 __all__ = [
     "SPDX_VERSION",

@@ -12,8 +12,6 @@ from sbom_check.models import DocumentFormat
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 from spdx_validator.engine import ValidationEngine
 
-SPDX_VERSION = "SPDX-2.3"
-
 
 @dataclass(frozen=True, slots=True)
 class DetectedDocument:
@@ -99,7 +97,6 @@ def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
 
 
 __all__ = [
-    "SPDX_VERSION",
     "DetectedDocument",
     "DocumentFormat",
     "UnsupportedDocumentError",

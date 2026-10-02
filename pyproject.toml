@@ -39,7 +39,7 @@ dependencies = [
 [project.scripts]
 sbom-check = "sbom_check.cli:main"
 spdx-validate = "spdx_validator.cli:main"
-sbom-check-spdx3 = "spdx3_validator.cli:main"
+sbom-spdx3-validate = "spdx3_validator.cli:main"
 
 [dependency-groups]
 dev = [

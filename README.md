@@ -18,6 +18,35 @@ A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents.
 - **Schema Validation**: JSON Schema validation against the declared document format and version
 - **Extensible**: Plugin system for custom validation rules
 
+## SPDX 3.0.1 validation scope
+
+SPDX 3.0.1 documents receive core SPDX validation only. This includes the
+SPDX 3.0.1 schema and semantic SHACL validation provided by the SPDX 3
+validator.
+
+Qualcomm completeness and profile validation is currently supported for SPDX
+2.3 documents only. The configured Qualcomm profile is not applied to SPDX
+3.0.1 documents.
+
+When using the combined `sbom-check` result, `profile_status` describes the
+profile portion of validation:
+
+- `passed`: the applicable profile completed without profile errors.
+- `failed`: the applicable profile ran and reported profile errors.
+- `not_applicable`: no profile was run. This is the expected value for SPDX
+  3.0.1 documents.
+
+`profile_status` is independent of the core SPDX result. For SPDX 3.0.1,
+use `is_valid`, `core_valid`, `schema_valid`, `semantic_valid`, and the
+validation messages to assess core validation. A `not_applicable` profile
+status is not itself a profile failure.
+
+### Operational notes
+
+- Validation requires outbound access to SPDX-hosted contexts, schemas, and SHACL resources.
+- Resource failures return an error with rule ID `spdx3_remote_resource_unavailable`; they are not SBOM content or semantic failures.
+- Each input file is validated independently; merged or cross-document validation is not supported.
+
 ## Quick Start
 
 ### Installation

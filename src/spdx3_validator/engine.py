@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 
+"""SPDX 3.0.1 validation engine."""
+
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -64,8 +66,7 @@ class ValidationEngine(ValidatorEngine):
         unique = []
 
         for error in errors:
-            key = (error.source, error.kind, error.message)
-            if key not in seen:
+            if  (key := (error.source, error.kind, error.message)) not in seen:
                 seen.add(key)
                 unique.append(error)
 
@@ -78,7 +79,8 @@ class ValidationEngine(ValidatorEngine):
         Validate SPDX 3.0.1 document from file.
 
         Args:
-            file_path: Path to SPDX JSON file
+            document: Parsed SPDX 3.0.1 document to validate.
+            file_path: Path to SPDX JSON file.
 
         Returns:
             Validation result

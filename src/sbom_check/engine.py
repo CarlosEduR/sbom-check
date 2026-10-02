@@ -144,7 +144,7 @@ class SbomCheckEngine:
         detected = None
         selected_engine = self.engine
         profile_applicable = self._profile_applicable
-        document_format = DocumentFormat.SPDX
+        document_format: DocumentFormat = DocumentFormat.SPDX
         spec_version = "2.3" if profile_applicable else None
         if self._validator_class is None:
             try:

@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 
+"""Translate SPDX 3 SHACL validation errors into diagnostic messages."""
+
 import re
 
 from spdx3_validator.models import ValidationMessage, ValidationSeverity
@@ -33,7 +35,7 @@ class ShaclDiagnosticParser:
     """Parse spdx3-validate SHACL output into vendor-facing messages."""
 
     @staticmethod
-    def parse_shacl_error(  # pylint: disable=too-many-return-statements  # noqa: PLR0911
+    def parse_shacl_error(  # pylint: disable=too-many-locals,too-many-return-statements  # noqa: PLR0911
         error_text: str,
     ) -> ValidationMessage:
         """Translate only facts explicitly present in the SHACL result.
@@ -145,8 +147,7 @@ class ShaclDiagnosticParser:
             )
 
         if constraint_name == "PatternConstraintComponent":
-            pattern = _shape_value(error_text, "pattern")
-            if pattern:
+            if (pattern := _shape_value(error_text, "pattern")):
                 pattern = pattern.rstrip(" .").strip("'\"").replace("\\\\", "\\")
             return ValidationMessage(
                 severity=ValidationSeverity.ERROR,

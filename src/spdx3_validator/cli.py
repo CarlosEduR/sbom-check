@@ -1,6 +1,8 @@
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause
 
+"""Command-line interface for SPDX 3.0.1 SBOM validation."""
+
 import json
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed

@@ -67,8 +67,7 @@ def detect_document(data: Any) -> DetectedDocument:
     if has_spdx_marker:
         return _detect_spdx(data)
 
-    has_spdx3_marker = isinstance(data.get("@graph"), list)
-    if has_spdx3_marker:
+    if isinstance(data.get("@graph"), list):
         return _detect_spdx3(data)
 
     raise UnsupportedDocumentError(

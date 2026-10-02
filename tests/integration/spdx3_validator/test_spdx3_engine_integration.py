@@ -38,10 +38,10 @@ class TestSpdx3ValidationIntegration:
         assert result.semantic_valid is True
         assert result.messages == []
 
-    def test_missing_required_attribute_reports_schema_message(
+    def test_missing_required_attribute_reports_all_validation_messages(
         self, tmp_path: Path
     ) -> None:
-        """Report a schema error when a required object attribute is missing."""
+        """Report schema and SHACL errors for a missing object attribute."""
         document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
         agent = next(
             node for node in document_data["@graph"] if node.get("type") == "Agent"
@@ -55,13 +55,40 @@ class TestSpdx3ValidationIntegration:
         assert result.is_valid is False
         assert result.schema_valid is False
         assert result.semantic_valid is False
-        assert len(result.messages) == 1
-        message = result.messages[0]
-        assert message.rule_id == "json_schema"
-        assert message.field_path == "$['@graph'][2]"
-        assert message.message == (
+        assert len(result.messages) == 3
+
+        schema_messages = [
+            message for message in result.messages if message.rule_id == "json_schema"
+        ]
+        shacl_messages = [
+            message
+            for message in result.messages
+            if message.rule_id == "spdx3_shacl_class_constraint"
+        ]
+        assert len(schema_messages) == 1
+        assert len(shacl_messages) == 2
+
+        schema_message = schema_messages[0]
+        assert schema_message.field_path == "$['@graph'][2]"
+        assert schema_message.message == (
             "Schema validation error: $['@graph'][2]: Is not valid"
         )
+        assert {message.affected_element for message in shacl_messages} == {
+            "_:ci",
+            "_:ci2",
+        }
+        for message in shacl_messages:
+            assert message.field_path == "createdBy"
+            assert message.found_value == "https://example.com/agent"
+            assert message.expected_value == "SPDX Agent"
+            assert message.message == (
+                "The 'createdBy' value must reference an SPDX Agent element."
+            )
+            assert message.section_reference == "SPDX 3.0.1 SHACL validation"
+            assert message.remediation == (
+                "Provide a reference to an SPDX Agent element and ensure the "
+                "referenced element has the required type."
+            )
 
     def test_remote_resource_failure_is_not_reported_as_content_failure(
         self, monkeypatch: pytest.MonkeyPatch

@@ -82,26 +82,44 @@ class TestValidationEngine:
         )
 
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_schema_error(self, mock_validate: Mock) -> None:
-        """Test conversion of schema errors into validation messages."""
-        error = CustomValidationError(
+    def test_validate_file_schema_and_shacl_errors(self, mock_validate: Mock) -> None:
+        """Test conversion of both schema and SHACL errors."""
+        schema_error = CustomValidationError(
             "test.spdx.json",
             "schema",
             "Document does not conform to the SPDX schema",
         )
-        mock_validate.return_value = CustomValidationResult(errors=[error])
+        shacl_error = CustomValidationError(
+            "test.spdx.json",
+            "shacl",
+            """Violation of type sh:ClassConstraintComponent:
+                sh:class <https://spdx.org/rdf/3.0.1/terms/Core/CreationInfo>
+                Focus Node: <https://example.com/package/example>
+                Value Node: _:CreationInfo2
+                Result path: <https://spdx.org/rdf/3.0.1/terms/Core/creationInfo>
+                Message: Value does not have class ns1:CreationInfo""",
+        )
+        mock_validate.return_value = CustomValidationResult(
+            errors=[schema_error, shacl_error]
+        )
 
         result = ValidationEngine().validate(file_path="test.spdx.json")
 
         assert result.is_valid is False
         assert result.schema_valid is False
         assert result.semantic_valid is False
-        assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "json_schema"
-        assert result.messages[0].field_path is None
-        assert result.messages[0].message == (
+        assert len(result.messages) == 2
+
+        schema_message, shacl_message = result.messages
+        assert schema_message.rule_id == "json_schema"
+        assert schema_message.field_path is None
+        assert schema_message.message == (
             "Schema validation error: Document does not conform to the SPDX schema"
         )
+        assert shacl_message.rule_id == "spdx3_shacl_class_constraint"
+        assert shacl_message.affected_element == "https://example.com/package/example"
+        assert shacl_message.field_path == "creationInfo"
+        assert shacl_message.found_value == "_:CreationInfo2"
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_file_shacl_error_preserves_affected_element(

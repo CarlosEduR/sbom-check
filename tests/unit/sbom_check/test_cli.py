@@ -144,7 +144,9 @@ def test_cli_validate_file_not_found():
     runner = CliRunner()
     result = runner.invoke(main, ["nonexistent.json"])
 
-    assert result.exit_code == 2  # Click returns 2 for invalid arguments (file not found)
+    assert (
+        result.exit_code == 2
+    )  # Click returns 2 for invalid arguments (file not found)
 
 
 @patch("sbom_check.cli.SbomCheckEngine")
@@ -416,6 +418,7 @@ def test_cli_error_handling(tmp_path):
 
 
 # New tests for directory traversal and enhanced functionality
+
 
 def test_cli_validate_directory_non_recursive(tmp_path):
     """Test directory scanning without recursion."""
@@ -720,7 +723,9 @@ def test_cli_multiple_files_json_output(tmp_path):
         mock_engine_class.return_value = mock_engine
 
         with patch("sbom_check.cli.ProcessPoolExecutor", ThreadPoolExecutor):
-            result = runner.invoke(main, ["--output-format", "json", str(file1), str(file2)])
+            result = runner.invoke(
+                main, ["--output-format", "json", str(file1), str(file2)]
+            )
 
         # Should contain JSON summary for multiple files
         assert result.exit_code == 0
@@ -772,6 +777,7 @@ def test_cli_mixed_validation_results(tmp_path):
         invalid_result.get_messages_by_severity.return_value = []
 
         mock_engine = Mock()
+
         # Return different results based on file path
         def mock_validate_file(file_path):
             if file_path.name == "valid.spdx.json":

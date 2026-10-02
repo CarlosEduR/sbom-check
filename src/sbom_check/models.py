@@ -149,9 +149,7 @@ class SbomCheckResult(BaseModel):
         core_valid = getattr(core_result, "is_valid", False)
         is_spdx_document = document_format is DocumentFormat.SPDX
         spdx_valid = core_valid if is_spdx_document else None
-        profile_valid = (
-            profile_result.overall_valid if profile_result else None
-        )
+        profile_valid = profile_result.overall_valid if profile_result else None
         profile_status = (
             ProfileStatus.PASSED
             if profile_result and profile_valid
@@ -177,7 +175,6 @@ class SbomCheckResult(BaseModel):
             document_format=document_format,
             spec_version=spec_version,
         )
-
 
     @classmethod
     def _convert_validation_messages(cls, core_result: Any) -> list[ValidationMessage]:
@@ -214,7 +211,6 @@ class SbomCheckResult(BaseModel):
                 messages.append(converted_message)
 
         return messages
-
 
     @classmethod
     def _calculate_summary(cls, messages: list[ValidationMessage]) -> ValidationSummary:

@@ -9,8 +9,8 @@ from sbom_check.detection import (
     UnsupportedDocumentError,
     detect_document,
 )
-from spdx_validator.engine import ValidationEngine
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
+from spdx_validator.engine import ValidationEngine
 
 
 def test_detect_spdx_23() -> None:

@@ -49,9 +49,10 @@ class ValidationEngine(ValidatorEngine):
             self.semantic_validator = SemanticValidator()
 
     def validate(
-        self, document: dict[str, Any], file_path: Path | None = None
+        self, document: dict[str, Any], file_path: str | None = None
     ) -> ValidationResult:
         """Validate a parsed SPDX document through the engine pipeline."""
+        del file_path # Unused in this implementation
         return self.validate_dict(document)
 
     def validate_json_string(self, json_string: str) -> ValidationResult:
@@ -119,9 +120,7 @@ class ValidationEngine(ValidatorEngine):
             Data with enum values corrected (modifies in-place for performance)
         """
         # Only process packages if they exist
-        if "packages" in data and isinstance(
-            data["packages"], list
-        ):  # pylint: disable=too-many-nested-blocks
+        if "packages" in data and isinstance(data["packages"], list):  # pylint: disable=too-many-nested-blocks
             for package in data["packages"]:
                 if (
                     isinstance(package, dict)

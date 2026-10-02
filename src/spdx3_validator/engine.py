@@ -1,17 +1,21 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+
 import json
+from collections.abc import Generator
 from contextlib import contextmanager
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Iterator
+from typing import Any
 from urllib.error import URLError
 
 from spdx3_validate import validate
-
-from sbom_validator.engine import ValidatorEngine
 from spdx3_validate.core import SpdxValidateError, UnknownVersionError
 from spdx3_validate.core import ValidationError as CustomValidationError
 from spdx3_validate.core import ValidationResult as CustomValidationResult
+
+from sbom_validator.engine import ValidatorEngine
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
 from spdx3_validator.models import (
     ValidationMessage,
@@ -25,8 +29,8 @@ SPDX_VERSION = "3.0.1"
 @contextmanager
 def _validation_source(
     document: dict[str, Any] | None,
-    file_path: Path | None,
-) -> Iterator[Path]:
+    file_path: str | Path | None,
+) -> Generator[Path]:
     """Provide a file path for the file-based SPDX 3 validator."""
     if file_path is not None:
         yield Path(file_path)
@@ -42,7 +46,7 @@ def _validation_source(
 
 
 class ValidationEngine(ValidatorEngine):
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the validation engine for SPDX 3.0.1."""
 
     @staticmethod
@@ -67,8 +71,8 @@ class ValidationEngine(ValidatorEngine):
 
         return unique
 
-    def validate(
-        self, document: dict[str, Any] | None = None, file_path: Path | None = None
+    def validate(  # pylint: disable=too-many-return-statements  # noqa: PLR0911
+        self, document: dict[str, Any] | None = None, file_path: str | Path | None = None
     ) -> ValidationResult:
         """
         Validate SPDX 3.0.1 document from file.

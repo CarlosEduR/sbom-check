@@ -86,7 +86,7 @@ def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
 
 
 def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
-    graph = data.get("@graph")
+    graph = data.get("@graph", [])
     spec_version = None
 
     for item in graph:

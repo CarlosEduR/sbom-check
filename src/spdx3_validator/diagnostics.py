@@ -1,4 +1,8 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+
 import re
+
 from spdx3_validator.models import ValidationMessage, ValidationSeverity
 
 SHACL_SECTION_REFERENCE = "SPDX 3.0.1 SHACL validation"
@@ -29,7 +33,9 @@ class ShaclDiagnosticParser:
     """Parse spdx3-validate SHACL output into vendor-facing messages."""
 
     @staticmethod
-    def parse_shacl_error(error_text: str) -> ValidationMessage:
+    def parse_shacl_error(  # pylint: disable=too-many-return-statements  # noqa: PLR0911
+        error_text: str,
+    ) -> ValidationMessage:
         """Translate only facts explicitly present in the SHACL result.
 
         The result text does not reliably contain enough information to classify

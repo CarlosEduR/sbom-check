@@ -1,3 +1,6 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+
 import json
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -168,7 +171,7 @@ def output_text_multiple(results: list[tuple[Path, ValidationResult]]) -> None:
 
 @click.command()
 @click.argument(
-    "paths", nargs=-1, required=True, type=click.Path(exists=True, path_type=Path)
+    "paths", nargs=-1, required=True, type=click.Path(exists=True, path_type=Path) # type: ignore[type-var]
 )
 @click.option(
     "--output-format",
@@ -200,7 +203,7 @@ def main(
     recursive: bool,
     pattern: str,
     jobs: int | None,
-):
+) -> None:
     """Validate SPDX 3.0.1 JSON-LD format documents."""
 
     if not (files_to_validate := collect_spdx_files(paths, recursive, pattern)):

@@ -8,7 +8,11 @@ from unittest.mock import Mock, patch
 from spdx3_validate.core import (
     SpdxValidateError,
     UnknownVersionError,
+)
+from spdx3_validate.core import (
     ValidationError as CustomValidationError,
+)
+from spdx3_validate.core import (
     ValidationResult as CustomValidationResult,
 )
 

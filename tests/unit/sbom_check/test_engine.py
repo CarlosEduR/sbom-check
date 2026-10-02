@@ -347,9 +347,9 @@ def test_document_namespace_http_url_allowed():
         for msg in result.messages
         if msg.severity == ValidationSeverity.ERROR and "scheme" in msg.message.lower()
     ]
-    assert (
-        len(scheme_errors) == 0
-    ), f"HTTP URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
+    assert len(scheme_errors) == 0, (
+        f"HTTP URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
+    )
 
 
 def test_document_namespace_https_url_allowed():
@@ -380,9 +380,9 @@ def test_document_namespace_https_url_allowed():
         for msg in result.messages
         if msg.severity == ValidationSeverity.ERROR and "scheme" in msg.message.lower()
     ]
-    assert (
-        len(scheme_errors) == 0
-    ), f"HTTPS URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
+    assert len(scheme_errors) == 0, (
+        f"HTTPS URLs should be allowed, but got errors: {[msg.message for msg in scheme_errors]}"
+    )
 
 
 def test_document_namespace_fragment_prohibited():
@@ -414,9 +414,9 @@ def test_document_namespace_fragment_prohibited():
         if msg.severity == ValidationSeverity.ERROR
         and "fragment" in msg.message.lower()
     ]
-    assert (
-        len(fragment_errors) > 0
-    ), "Fragment identifiers should be prohibited in documentNamespace"
+    assert len(fragment_errors) > 0, (
+        "Fragment identifiers should be prohibited in documentNamespace"
+    )
 
 
 def test_missing_spdx_version_preserves_validator_and_profile_diagnostics(

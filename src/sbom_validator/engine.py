@@ -25,7 +25,7 @@ class ValidatorEngine(ABC):
         """Initialize the validator with validation settings."""
 
     @abstractmethod
-    def validate(self, document: dict[str, Any], file_path: Path | None = None) -> Any:
+    def validate(self, document: dict[str, Any], file_path: str | None = None) -> Any:
         """Validate a parsed SBOM document against its declared schema."""
 
 

@@ -434,7 +434,7 @@ def _print_text_result(result: Any, file_path: str) -> None:
 
     profile_status = _result_profile_status(result)
     if profile_status is ProfileStatus.NOT_APPLICABLE:
-        console.print("[blue]ℹ️ Profile Validation: NOT APPLICABLE[/blue]")
+        console.print("[blue]Info: Profile Validation: NOT APPLICABLE[/blue]")
     elif profile_status is ProfileStatus.PASSED:
         console.print("[green]✅ Profile Validation: PASSED[/green]")
     else:

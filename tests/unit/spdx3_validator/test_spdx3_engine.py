@@ -18,6 +18,20 @@ from spdx3_validator.engine import ValidationEngine
 class TestValidationEngine:
     """Test cases for the SPDX 3 validation engine."""
 
+    def test_validate_without_document_or_file_path(self):
+        """Test handling of missing validation input."""
+        result = ValidationEngine().validate()
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "spdx3_validation_input_error"
+        assert result.messages[0].message == (
+            "Invalid SPDX 3 validation input: "
+            "Either document or file_path must be provided"
+        )
+
     @patch("spdx3_validator.engine.validate")
     def test_validate_file_success(self, mock_validate: Mock) -> None:
         """Test successful validation without invoking the real validator."""

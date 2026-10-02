@@ -1,7 +1,10 @@
+import json
+from contextlib import contextmanager
 from json import JSONDecodeError
-from urllib.error import URLError
 from pathlib import Path
-from typing import Any
+from tempfile import TemporaryDirectory
+from typing import Any, Iterator
+from urllib.error import URLError
 
 from spdx3_validate import validate
 
@@ -17,6 +20,25 @@ from spdx3_validator.models import (
 )
 
 SPDX_VERSION = "3.0.1"
+
+
+@contextmanager
+def _validation_source(
+    document: dict[str, Any] | None,
+    file_path: Path | None,
+) -> Iterator[Path]:
+    """Provide a file path for the file-based SPDX 3 validator."""
+    if file_path is not None:
+        yield Path(file_path)
+        return
+
+    if document is None:
+        raise ValueError("Either document or file_path must be provided")
+
+    with TemporaryDirectory() as temp_dir:
+        source_path = Path(temp_dir) / "document.spdx.json"
+        source_path.write_text(json.dumps(document), encoding="utf-8")
+        yield source_path
 
 
 class ValidationEngine(ValidatorEngine):
@@ -45,7 +67,9 @@ class ValidationEngine(ValidatorEngine):
 
         return unique
 
-    def validate(self, document: dict[str, Any] | None = None, file_path: Path | None = None) -> ValidationResult:
+    def validate(
+        self, document: dict[str, Any] | None = None, file_path: Path | None = None
+    ) -> ValidationResult:
         """
         Validate SPDX 3.0.1 document from file.
 
@@ -55,14 +79,14 @@ class ValidationEngine(ValidatorEngine):
         Returns:
             Validation result
         """
-        print("Running validation on file:", file_path)
         all_messages: list[ValidationMessage] = []
         schema_valid = True
         semantic_valid = True
         try:
-            result: CustomValidationResult = validate(
-                sources=str(file_path), version=SPDX_VERSION
-            )
+            with _validation_source(document, file_path) as source_path:
+                result: CustomValidationResult = validate(
+                    sources=str(source_path), version=SPDX_VERSION
+                )
             if result.valid:
                 return ValidationResult(
                     is_valid=True,
@@ -98,7 +122,6 @@ class ValidationEngine(ValidatorEngine):
 
             shacl_errors = [error for error in errors if error.kind == "shacl"]
             for error in shacl_errors:
-                print(error)
                 semantic_valid = False
                 shacl_error = ShaclDiagnosticParser.parse_shacl_error(error.message)
                 all_messages.append(shacl_error)
@@ -178,6 +201,19 @@ class ValidationEngine(ValidatorEngine):
                         severity=ValidationSeverity.ERROR,
                         message=f"Invalid JSON: {e!s}",
                         rule_id="json_parse_error",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+        except ValueError as e:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=f"Invalid SPDX 3 validation input: {e}",
+                        rule_id="spdx3_validation_input_error",
                     )
                 ],
                 schema_valid=False,

@@ -1,10 +1,10 @@
 import json
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 import click
-from typing import Any
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from spdx3_validator.engine import ValidationEngine
 from spdx3_validator.models import ValidationResult, ValidationSeverity

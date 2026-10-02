@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from sbom_check.models import DocumentFormat
-from spdx_validator.engine import ValidationEngine
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
+from spdx_validator.engine import ValidationEngine
 
 SPDX_VERSION = "SPDX-2.3"
 

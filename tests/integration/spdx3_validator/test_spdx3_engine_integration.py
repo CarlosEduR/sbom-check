@@ -27,6 +27,17 @@ class TestSpdx3ValidationIntegration:
         assert result.semantic_valid is True
         assert result.messages == []
 
+    def test_valid_minimal_document_without_file_path(self):
+        """Validate a document serialized to a temporary file."""
+        document = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+
+        result = ValidationEngine().validate(document=document)
+
+        assert result.is_valid is True
+        assert result.schema_valid is True
+        assert result.semantic_valid is True
+        assert result.messages == []
+
     def test_missing_required_attribute_reports_schema_message(
         self, tmp_path: Path
     ) -> None:

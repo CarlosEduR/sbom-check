@@ -119,7 +119,9 @@ class ValidationEngine(ValidatorEngine):
             Data with enum values corrected (modifies in-place for performance)
         """
         # Only process packages if they exist
-        if "packages" in data and isinstance(data["packages"], list):  # pylint: disable=too-many-nested-blocks
+        if "packages" in data and isinstance(
+            data["packages"], list
+        ):  # pylint: disable=too-many-nested-blocks
             for package in data["packages"]:
                 if (
                     isinstance(package, dict)

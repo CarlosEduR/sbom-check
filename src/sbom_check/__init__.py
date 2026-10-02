@@ -20,7 +20,7 @@ __all__ = [
     "DocumentFormat",
     "ProfileStatus",
     "SbomCheckResult",
-    "ValidatorEngine",
     "ValidationMessage",
     "ValidationSeverity",
+    "ValidatorEngine",
 ]

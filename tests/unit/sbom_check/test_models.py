@@ -3,6 +3,8 @@
 
 """Unit tests for data models."""
 
+from types import SimpleNamespace
+
 from sbom_check.models import (
     SbomCheckResult,
     ValidationMessage,
@@ -49,6 +51,30 @@ def test_validation_message_str():
     assert "Field: test.field" in str_repr
     assert "Found: actual" in str_repr
     assert "Expected: expected" in str_repr
+
+
+def test_convert_validation_messages_preserves_diagnostics():
+    """Conversion from a core validator keeps all diagnostic context."""
+    raw_message = SimpleNamespace(
+        severity=ValidationSeverity.ERROR,
+        message="Invalid reference",
+        rule_id="spdx3-reference",
+        field_path="creationInfo",
+        affected_element="https://example.com/package",
+        section_reference="SPDX 3.0.1 SHACL validation",
+        found_value="_:CreationInfo2",
+        expected_value="SPDX CreationInfo",
+        remediation="Use an SPDX CreationInfo reference.",
+    )
+    core_result = SimpleNamespace(messages=[raw_message])
+
+    [message] = SbomCheckResult._convert_validation_messages(core_result)
+
+    assert message.affected_element == raw_message.affected_element
+    assert message.section_reference == raw_message.section_reference
+    assert message.found_value == raw_message.found_value
+    assert message.expected_value == raw_message.expected_value
+    assert message.remediation == raw_message.remediation
 
 
 def test_validation_summary_success_rate():

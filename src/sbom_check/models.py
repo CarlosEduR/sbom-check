@@ -202,7 +202,14 @@ class SbomCheckResult(BaseModel):
                     severity=severity_level,
                     message=raw_message.message,
                     rule_id=getattr(raw_message, "rule_id", None),
-                    field_path=getattr(raw_message, "field_path", getattr(raw_message, "path", None)),
+                    field_path=getattr(
+                        raw_message, "field_path", getattr(raw_message, "path", None)
+                    ),
+                    affected_element=getattr(raw_message, "affected_element", None),
+                    section_reference=getattr(raw_message, "section_reference", None),
+                    found_value=getattr(raw_message, "found_value", None),
+                    expected_value=getattr(raw_message, "expected_value", None),
+                    remediation=getattr(raw_message, "remediation", None),
                 )
                 messages.append(converted_message)
 
@@ -240,6 +247,8 @@ class SbomCheckResult(BaseModel):
         found_value: Any | None = None,
         expected_value: Any | None = None,
         remediation: str | None = None,
+        *,
+        affected_element: str | None = None,
     ) -> None:
         """Add a validation message to the result."""
         msg = ValidationMessage(
@@ -247,6 +256,7 @@ class SbomCheckResult(BaseModel):
             message=message,
             rule_id=rule_id,
             field_path=field_path,
+            affected_element=affected_element,
             section_reference=section_reference,
             found_value=found_value,
             expected_value=expected_value,

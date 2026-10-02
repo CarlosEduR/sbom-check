@@ -5,10 +5,7 @@
 
 from unittest.mock import Mock, patch
 
-from spdx3_validate.core import (
-    SpdxValidateError,
-    UnknownVersionError,
-)
+from spdx3_validate.core import UnknownVersionError
 from spdx3_validate.core import (
     ValidationError as CustomValidationError,
 )
@@ -41,31 +38,33 @@ class TestValidationEngine:
         """Test successful validation without invoking the real validator."""
         mock_validate.return_value = CustomValidationResult()
 
-        result = ValidationEngine().validate(file_path="test.spdx.json")
+        result = ValidationEngine().validate(
+            document={
+                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
+            }
+        )
 
         assert result.is_valid is True
         assert result.schema_valid is True
         assert result.semantic_valid is True
         assert result.messages == []
-        mock_validate.assert_called_once_with(sources="test.spdx.json", version="3.0.1")
+        mock_validate.assert_called_once()
+        assert mock_validate.call_args.kwargs["version"] == "3.0.1"
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_file_missing_context(self, mock_validate: Mock) -> None:
         """Test handling of a document without an @context."""
-        mock_validate.side_effect = SpdxValidateError(
-            "No @context found in test.spdx.json"
-        )
-
-        result = ValidationEngine().validate(file_path="test.spdx.json")
+        result = ValidationEngine().validate(document={"@graph": []})
 
         assert result.is_valid is False
         assert result.schema_valid is False
         assert result.semantic_valid is False
         assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "spdx_validate_error"
+        assert result.messages[0].rule_id == "spdx3_missing_context"
         assert result.messages[0].message == (
-            "SPDX validation error: No @context found in test.spdx.json"
+            "The SPDX document is missing the required @context."
         )
+        mock_validate.assert_not_called()
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_file_unknown_version(self, mock_validate: Mock) -> None:
@@ -74,7 +73,11 @@ class TestValidationEngine:
             "test.spdx.json has unknown version"
         )
 
-        result = ValidationEngine().validate(file_path="test.spdx.json")
+        result = ValidationEngine().validate(
+            document={
+                "@context": "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"
+            }
+        )
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -107,7 +110,11 @@ class TestValidationEngine:
             errors=[schema_error, shacl_error]
         )
 
-        result = ValidationEngine().validate(file_path="test.spdx.json")
+        result = ValidationEngine().validate(
+            document={
+                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
+            }
+        )
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -142,7 +149,11 @@ class TestValidationEngine:
         )
         mock_validate.return_value = CustomValidationResult(errors=[error])
 
-        result = ValidationEngine().validate(file_path="test.spdx.json")
+        result = ValidationEngine().validate(
+            document={
+                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
+            }
+        )
 
         assert result.is_valid is False
         assert result.schema_valid is True

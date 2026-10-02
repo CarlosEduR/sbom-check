@@ -28,28 +28,28 @@ from spdx3_validator.models import (
 SPDX_VERSION = "3.0.1"
 
 
-@contextmanager
-def _validation_source(
-    document: dict[str, Any] | None,
-    file_path: str | Path | None,
-) -> Generator[Path]:
-    """Provide a file path for the file-based SPDX 3 validator."""
-    if file_path is not None:
-        yield Path(file_path)
-        return
-
-    if document is None:
-        raise ValueError("Either document or file_path must be provided")
-
-    with TemporaryDirectory() as temp_dir:
-        source_path = Path(temp_dir) / "document.spdx.json"
-        source_path.write_text(json.dumps(document), encoding="utf-8")
-        yield source_path
-
-
 class ValidationEngine(ValidatorEngine):
     def __init__(self) -> None:
         """Initialize the validation engine for SPDX 3.0.1."""
+
+    @staticmethod
+    @contextmanager
+    def _validation_source(
+        document: dict[str, Any] | None,
+        file_path: str | Path | None,
+    ) -> Generator[Path]:
+        """Provide a file path for the file-based SPDX 3 validator."""
+        if file_path is not None:
+            yield Path(file_path)
+            return
+
+        if document is None:
+            raise ValueError("Either document or file_path must be provided")
+
+        with TemporaryDirectory() as temp_dir:
+            source_path = Path(temp_dir) / "document.spdx.json"
+            source_path.write_text(json.dumps(document), encoding="utf-8")
+            yield source_path
 
     @staticmethod
     def _unique_errors(
@@ -89,10 +89,33 @@ class ValidationEngine(ValidatorEngine):
         schema_valid = True
         semantic_valid = True
         try:
-            with _validation_source(document, file_path) as source_path:
+            with self._validation_source(document, file_path) as source_path:
+                if (source_document := document) is None:
+                    source_document = json.loads(
+                        source_path.read_text(encoding="utf-8")
+                    )
+
+                if "@context" not in source_document:
+                    return ValidationResult(
+                        is_valid=False,
+                        messages=[
+                            ValidationMessage(
+                                severity=ValidationSeverity.ERROR,
+                                message=(
+                                    "The SPDX document is missing the required "
+                                    "@context."
+                                ),
+                                rule_id="spdx3_missing_context",
+                            )
+                        ],
+                        schema_valid=False,
+                        semantic_valid=False,
+                    )
+
                 result: CustomValidationResult = validate(
                     sources=str(source_path), version=SPDX_VERSION
                 )
+
             if result.valid:
                 return ValidationResult(
                     is_valid=True,

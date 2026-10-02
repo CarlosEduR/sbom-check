@@ -36,10 +36,11 @@ profile portion of validation:
 - `not_applicable`: no profile was run. This is the expected value for SPDX
   3.0.1 documents.
 
-`profile_status` is independent of the core SPDX result. For SPDX 3.0.1,
-use `is_valid`, `core_valid`, `schema_valid`, `semantic_valid`, and the
-validation messages to assess core validation. A `not_applicable` profile
-status is not itself a profile failure.
+`profile_status` is independent of the core SPDX result. For the combined
+`SbomCheckResult`, use `overall_valid`, `core_valid`, `summary`, and the
+validation messages to assess validation. `document_format` and `spec_version`
+identify which core validator was used. A `not_applicable` profile status is
+not itself a profile failure.
 
 ### Operational notes
 

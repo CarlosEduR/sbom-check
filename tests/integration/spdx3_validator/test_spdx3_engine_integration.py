@@ -146,10 +146,10 @@ class TestSpdx3ValidationIntegration:
         assert result.messages[0].rule_id == "unsupported_spdx_version"
         assert "Unsupported SPDX version" in result.messages[0].message
 
-    def test_recognized_but_incompatible_spdx_version_returns_validation_message(
+    def test_non_matching_spdx_context_returns_validation_message(
         self, tmp_path: Path
     ) -> None:
-        """Reject a recognized SPDX version other than the requested version."""
+        """Reject an SPDX context other than the supported context."""
         document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
         document_data["@context"] = "https://spdx.org/rdf/3.0.0/spdx-context.jsonld"
         incompatible_version = tmp_path / "incompatible-version.spdx.json"
@@ -223,5 +223,7 @@ class TestSpdx3ValidationIntegration:
         assert result.schema_valid is False
         assert result.semantic_valid is False
         assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "spdx_validate_error"
-        assert "No @context found" in result.messages[0].message
+        assert result.messages[0].rule_id == "spdx3_missing_context"
+        assert result.messages[0].message == (
+            "The SPDX document is missing the required @context."
+        )

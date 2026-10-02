@@ -1,6 +1,8 @@
 import re
 from spdx3_validator.models import ValidationMessage, ValidationSeverity
 
+SHACL_SECTION_REFERENCE = "SPDX 3.0.1 SHACL validation"
+
 
 def _local_name(value: str | None) -> str | None:
     if not value or value == "-":
@@ -12,6 +14,15 @@ def _match_value(match: re.Match[str] | None) -> str | None:
     if not match:
         return None
     return match.group(1) or match.group(2)
+
+
+def _shape_value(error_text: str, property_name: str) -> str | None:
+    match = re.search(rf"sh:{property_name}\s+([^;\n]+)", error_text)
+    return match.group(1).strip() if match else None
+
+
+def _property_label(field_name: str | None) -> str:
+    return f"'{field_name}'" if field_name else "this property"
 
 
 class ShaclDiagnosticParser:
@@ -44,7 +55,7 @@ class ShaclDiagnosticParser:
         detail_text = detail.group(1).strip() if detail else "SHACL validation failed"
 
         if constraint_name == "ClassConstraintComponent" and expected:
-            property_label = f"'{field_name}'" if field_name else "this property"
+            property_label = _property_label(field_name)
             return ValidationMessage(
                 severity=ValidationSeverity.ERROR,
                 message=(
@@ -53,6 +64,7 @@ class ShaclDiagnosticParser:
                 ),
                 rule_id="spdx3_shacl_class_constraint",
                 field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
                 affected_element=focus_node,
                 expected_value=f"SPDX {expected}",
                 found_value=value_node,
@@ -60,6 +72,98 @@ class ShaclDiagnosticParser:
                     f"Provide a reference to an SPDX {expected} element and ensure "
                     "the referenced element has the required type."
                 ),
+            )
+
+        property_label = _property_label(field_name)
+
+        if constraint_name == "MinCountConstraintComponent":
+            minimum = _shape_value(error_text, "minCount")
+            expected_value = f"at least {minimum} value(s)" if minimum else None
+            return ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message=(
+                    f"The {property_label} property must contain "
+                    f"{expected_value or 'the minimum required number of values'}."
+                ),
+                rule_id="spdx3_shacl_mincount_constraint",
+                field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
+                affected_element=focus_node,
+                found_value=value_node,
+                expected_value=expected_value,
+                remediation=(
+                    f"Provide {expected_value or 'the required number of values'}."
+                ),
+            )
+
+        if constraint_name == "MaxCountConstraintComponent":
+            maximum = _shape_value(error_text, "maxCount")
+            expected_value = f"at most {maximum} value(s)" if maximum else None
+            return ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message=(
+                    f"The {property_label} property must contain "
+                    f"{expected_value or 'no more than the maximum allowed number of values'}."
+                ),
+                rule_id="spdx3_shacl_maxcount_constraint",
+                field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
+                affected_element=focus_node,
+                found_value=value_node,
+                expected_value=expected_value,
+                remediation=(
+                    f"Provide {expected_value or 'no more than the allowed number of values'}."
+                ),
+            )
+
+        if constraint_name == "DatatypeConstraintComponent":
+            datatype = _shape_value(error_text, "datatype")
+            datatype_name = _local_name(datatype.strip("<>") if datatype else None)
+            expected_value = datatype_name or datatype
+            return ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message=(
+                    f"The {property_label} value must have datatype "
+                    f"{expected_value or 'the required datatype'}."
+                ),
+                rule_id="spdx3_shacl_datatype_constraint",
+                field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
+                affected_element=focus_node,
+                found_value=value_node,
+                expected_value=expected_value,
+                remediation=(
+                    f"Provide a value with datatype "
+                    f"{expected_value or 'required by the SPDX property'}."
+                ),
+            )
+
+        if constraint_name == "PatternConstraintComponent":
+            pattern = _shape_value(error_text, "pattern")
+            if pattern:
+                pattern = pattern.rstrip(" .").strip("'\"").replace("\\\\", "\\")
+            return ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message=f"The {property_label} value does not match the required pattern.",
+                rule_id="spdx3_shacl_pattern_constraint",
+                field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
+                affected_element=focus_node,
+                found_value=value_node,
+                expected_value=pattern,
+                remediation="Provide a value that matches the required SPDX format.",
+            )
+
+        if constraint_name == "InConstraintComponent":
+            return ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message=f"The {property_label} value is not one of the allowed values.",
+                rule_id="spdx3_shacl_in_constraint",
+                field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
+                affected_element=focus_node,
+                found_value=value_node,
+                remediation="Use one of the values allowed by the SPDX property.",
             )
 
         if constraint_name == "NodeKindConstraintComponent":
@@ -71,6 +175,7 @@ class ShaclDiagnosticParser:
                 ),
                 rule_id="spdx3_shacl_node_kind_constraint",
                 field_path=field_name,
+                section_reference=SHACL_SECTION_REFERENCE,
                 affected_element=focus_node,
                 found_value=value_node,
                 expected_value="IRI",
@@ -85,6 +190,7 @@ class ShaclDiagnosticParser:
             message=f"SPDX 3.0.1 constraint violation: {detail_text}",
             rule_id=f"spdx3_shacl_{constraint_name.lower()}",
             field_path=field_name,
+            section_reference=SHACL_SECTION_REFERENCE,
             affected_element=focus_node,
             found_value=value_node,
             remediation="Review the referenced SPDX 3.0.1 property and value.",

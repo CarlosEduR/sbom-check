@@ -251,7 +251,7 @@ class ExternalRef(BaseModel):
 class PackageVerificationCode(BaseModel):
     """Package verification code."""
 
-    packageVerificationCodeValue: str
+    packageVerificationCodeValue: str = Field(min_length=40, max_length=40)
     packageVerificationCodeExcludedFiles: list[str] | None = None
 
 

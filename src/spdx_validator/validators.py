@@ -264,4 +264,34 @@ class SemanticValidator:
                     )
                 )
 
+        messages.extend(self._check_files_analyzed_requirements(spdx_data))
+
+        return messages
+
+    def _check_files_analyzed_requirements(
+        self, spdx_data: dict[str, Any]
+    ) -> list[ValidationMessage]:
+        """Validate requirements that apply when filesAnalyzed is true."""
+        messages: list[ValidationMessage] = []
+
+        document_name = spdx_data.get("name", "Unknown Document")
+        for index, package in enumerate(spdx_data.get("packages", [])):
+            if package.get("filesAnalyzed") is not True:
+                continue
+
+            if package.get("packageVerificationCode") is None:
+                package_name = package.get("name") or package.get(
+                    "SPDXID", f"Package {index}"
+                )
+
+                messages.append(
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=f"Missing required package verification code for package {package_name} in {document_name}",
+                        path=f"packages.{index}.packageVerificationCode",
+                        element_id=package.get("SPDXID"),
+                        rule_id="missing_package_verification_code",
+                    )
+                )
+
         return messages

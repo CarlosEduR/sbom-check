@@ -276,7 +276,8 @@ class SemanticValidator:
 
         document_name = spdx_data.get("name", "Unknown Document")
         for index, package in enumerate(spdx_data.get("packages", [])):
-            if package.get("filesAnalyzed") is not True:
+            # SPDX 2.3 specifies that filesAnalyzed defaults to true when omitted.
+            if package.get("filesAnalyzed", True) is not True:
                 continue
 
             if package.get("packageVerificationCode") is None:

@@ -261,7 +261,7 @@ class Package(BaseModel):
     SPDXID: str
     name: str
     downloadLocation: str
-    filesAnalyzed: bool | None = None
+    filesAnalyzed: bool = True
     packageVerificationCode: PackageVerificationCode | None = None
     checksums: list[Checksum] | None = None
     homepage: str | None = None

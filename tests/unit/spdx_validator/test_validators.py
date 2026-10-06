@@ -384,6 +384,7 @@ class TestSemanticValidator:
                 {
                     "SPDXID": "SPDXRef-Package",
                     "name": "Test Package",
+                    "filesAnalyzed": False
                 }
             ],
         }

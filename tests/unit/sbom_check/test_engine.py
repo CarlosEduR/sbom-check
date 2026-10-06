@@ -34,6 +34,29 @@ def test_engine_initialization_with_profile():
     assert engine.config.metadata.name == "Basic SPDX 2.3 Compliance"
 
 
+def test_default_profile_requires_explicit_files_analyzed(
+    sample_valid_spdx_document,
+):
+    """Test the default profile requires filesAnalyzed despite the SPDX default."""
+    package = sample_valid_spdx_document["packages"][0]
+    package.pop("filesAnalyzed")
+    package["packageVerificationCode"] = {
+        # Arbitrary valid hexadecimal value; digest calculation is not tested here.
+        "packageVerificationCodeValue": "a" * 40,
+    }
+
+    result = SbomCheckEngine().validate_dict(sample_valid_spdx_document)
+
+    assert not result.overall_valid
+    assert result.spdx_valid
+    assert not result.profile_valid
+    assert any(
+        message.rule_id == "missing_package_field"
+        and message.field_path == "packages[0].filesAnalyzed"
+        for message in result.messages
+    )
+
+
 def test_validate_json_string_invalid_json():
     """Test validation with invalid JSON."""
     engine = SbomCheckEngine()
@@ -283,6 +306,26 @@ def test_validate_single_package():
         msg for msg in result.messages if msg.severity == ValidationSeverity.ERROR
     ]
     assert len(errors) > 0
+
+
+def test_validate_single_package_uses_true_rules_when_files_analyzed_is_omitted():
+    """Test that omitted filesAnalyzed applies the when_true_requires rules."""
+    config = ConfigLoader().load_profile("basic_spdx")
+    config.package_requirements.files_analyzed_rules.when_true_requires = [
+        "packageVerificationCode"
+    ]
+    engine = SbomCheckEngine(config)
+
+    result = SbomCheckResult(overall_valid=True, spdx_valid=True, profile_valid=True)
+    package = {"name": "test-package"}
+
+    engine._validate_single_package(package, 0, result)
+
+    assert any(
+        message.rule_id == "files_analyzed_missing_field"
+        and message.field_path == "packages[0].packageVerificationCode"
+        for message in result.messages
+    )
 
 
 def test_validate_relationship_requirements():

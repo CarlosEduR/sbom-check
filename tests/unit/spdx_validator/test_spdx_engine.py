@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -152,6 +153,42 @@ class TestValidationEngine:
         assert any(
             "Semantic validation skipped" in msg.message for msg in result.messages
         )
+
+    def test_validate_dict_rejects_non_hex_package_verification_code(
+        self, sample_valid_spdx_document: dict[str, Any]
+    ) -> None:
+        """Test that the public validator rejects non-hex verification codes."""
+        package = sample_valid_spdx_document["packages"][0]
+        package["filesAnalyzed"] = True
+        package["packageVerificationCode"] = {"packageVerificationCodeValue": "Z" * 40}
+
+        result = ValidationEngine().validate_dict(sample_valid_spdx_document)
+
+        assert len(result.messages) == 1
+        message = result.messages[0]
+        assert message.rule_id == "invalid_package_verification_code"
+        assert message.path == (
+            "packages.0.packageVerificationCode.packageVerificationCodeValue"
+        )
+        assert message.element_id == "SPDXRef-Package-TestApp"
+        assert result.schema_valid
+        assert not result.semantic_valid
+        assert not result.is_valid
+
+    def test_validate_dict_accepts_uppercase_hex_package_verification_code(
+        self, sample_valid_spdx_document: dict[str, Any]
+    ) -> None:
+        """Test that uppercase hexadecimal verification codes match the official validator."""
+        package = sample_valid_spdx_document["packages"][0]
+        package["filesAnalyzed"] = True
+        package["packageVerificationCode"] = {"packageVerificationCodeValue": "A" * 40}
+
+        result = ValidationEngine().validate_dict(sample_valid_spdx_document)
+
+        assert result.schema_valid
+        assert result.semantic_valid
+        assert result.is_valid
+        assert len(result.messages) == 0
 
     @patch("spdx_validator.models.SpdxDocument.model_validate")
     @patch("spdx_validator.validators.JsonSchemaValidator.validate")

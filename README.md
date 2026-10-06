@@ -156,6 +156,28 @@ SBOM-Check includes an integrated spdx-validator library that provides:
 - **Library Integration**: Used internally by SBOM-Check for base validation
 - **Unified Results**: Combined validation results with detailed error reporting
 
+### Package verification codes
+
+For SPDX 2.3 packages, an omitted `filesAnalyzed` property is treated as `true`,
+matching the official validator behavior. The default profile does not require
+`filesAnalyzed` to be present, but packages that omit it must still provide a
+`packageVerificationCode` whose value is a 40-character hexadecimal SHA-1
+value (uppercase and lowercase digits are accepted).
+Packages with `filesAnalyzed: false` must not include a non-empty verification
+code. For compatibility with the official validator, an explicitly empty
+`packageVerificationCodeValue` is accepted in this case.
+
+The integrated SPDX semantic validator already enforces the package verification
+code requirement. Custom profiles normally should not also add
+`packageVerificationCode` to `files_analyzed_rules.when_true_requires`, or the
+same missing code may be reported by both the SPDX and profile validation layers.
+Keep the profile rule only when semantic validation is disabled or when a
+separate profile-specific message is intentional.
+
+This means SBOMs that previously omitted both `filesAnalyzed` and
+`packageVerificationCode` may now fail validation; add `filesAnalyzed: false` when
+files were not analyzed, or provide the package verification code when they were.
+
 
 ## Exit Codes
 

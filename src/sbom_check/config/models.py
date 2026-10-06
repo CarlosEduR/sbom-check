@@ -284,7 +284,6 @@ class SbomCheckConfig(BaseModel):
                     "versionInfo",
                     "supplier",
                     "homepage",
-                    "filesAnalyzed",
                     "licenseConcluded",
                     "licenseDeclared",
                     "copyrightText",

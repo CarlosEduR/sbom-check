@@ -147,7 +147,7 @@ class ShaclDiagnosticParser:
             )
 
         if constraint_name == "PatternConstraintComponent":
-            if (pattern := _shape_value(error_text, "pattern")):
+            if pattern := _shape_value(error_text, "pattern"):
                 pattern = pattern.rstrip(" .").strip("'\"").replace("\\\\", "\\")
             return ValidationMessage(
                 severity=ValidationSeverity.ERROR,

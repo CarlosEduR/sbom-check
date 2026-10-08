@@ -41,7 +41,7 @@ def validate_single_file(
 ) -> tuple[Path, ValidationResult]:
     """Validate a single SPDX 3.0.1 file."""
     engine = ValidationEngine()
-    result = engine.validate(file_path=file_path)
+    result = engine.validate_file(file_path=file_path)
     return file_path, result
 
 
@@ -173,7 +173,10 @@ def output_text_multiple(results: list[tuple[Path, ValidationResult]]) -> None:
 
 @click.command()
 @click.argument(
-    "paths", nargs=-1, required=True, type=click.Path(exists=True, path_type=Path) # type: ignore[type-var]
+    "paths",
+    nargs=-1,
+    required=True,
+    type=click.Path(exists=True, path_type=Path),  # type: ignore[type-var]
 )
 @click.option(
     "--output-format",

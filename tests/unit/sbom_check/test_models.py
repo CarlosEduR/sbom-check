@@ -53,7 +53,7 @@ def test_validation_message_str():
     assert "Expected: expected" in str_repr
 
 
-def test_convert_validation_messages_preserves_diagnostics():
+def test_convert_spdx_messages_preserves_diagnostics():
     """Conversion from a core validator keeps all diagnostic context."""
     raw_message = SimpleNamespace(
         severity=ValidationSeverity.ERROR,
@@ -68,7 +68,7 @@ def test_convert_validation_messages_preserves_diagnostics():
     )
     core_result = SimpleNamespace(messages=[raw_message])
 
-    [message] = SbomCheckResult._convert_validation_messages(core_result)
+    [message] = SbomCheckResult._convert_spdx_messages(core_result)
 
     assert message.affected_element == raw_message.affected_element
     assert message.section_reference == raw_message.section_reference

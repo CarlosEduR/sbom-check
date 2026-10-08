@@ -3,6 +3,8 @@
 
 """Unit tests for the SPDX 3 validation engine."""
 
+import json
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from spdx3_validate.core import UnknownVersionError
@@ -19,30 +21,13 @@ from spdx3_validator.engine import ValidationEngine
 class TestValidationEngine:
     """Test cases for the SPDX 3 validation engine."""
 
-    def test_validate_without_document_or_file_path(self):
-        """Test handling of missing validation input."""
-        result = ValidationEngine().validate()
-
-        assert result.is_valid is False
-        assert result.schema_valid is False
-        assert result.semantic_valid is False
-        assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "spdx3_validation_input_error"
-        assert result.messages[0].message == (
-            "Invalid SPDX 3 validation input: "
-            "Either document or file_path must be provided"
-        )
-
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_success(self, mock_validate: Mock) -> None:
-        """Test successful validation without invoking the real validator."""
+    def test_validate_dict_success(self, mock_validate: Mock):
+        """Test successful dictionary validation without invoking the real validator."""
         mock_validate.return_value = CustomValidationResult()
+        document = {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
 
-        result = ValidationEngine().validate(
-            document={
-                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
-            }
-        )
+        result = ValidationEngine().validate_dict(document)
 
         assert result.is_valid is True
         assert result.schema_valid is True
@@ -52,9 +37,24 @@ class TestValidationEngine:
         assert mock_validate.call_args.kwargs["version"] == "3.0.1"
 
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_missing_context(self, mock_validate: Mock) -> None:
+    def test_validate_dict_rejects_non_object(self, mock_validate: Mock):
+        """Test that dictionary validation rejects a non-object JSON value."""
+        result = ValidationEngine().validate_dict([])  # type: ignore[arg-type]
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "unsupported_format"
+        assert result.messages[0].message == (
+            "Unsupported input: the JSON document must be a top-level object."
+        )
+        mock_validate.assert_not_called()
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_missing_context(self, mock_validate: Mock):
         """Test handling of a document without an @context."""
-        result = ValidationEngine().validate(document={"@graph": []})
+        result = ValidationEngine().validate_dict({"@graph": []})
 
         assert result.is_valid is False
         assert result.schema_valid is False
@@ -67,16 +67,14 @@ class TestValidationEngine:
         mock_validate.assert_not_called()
 
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_unknown_version(self, mock_validate: Mock) -> None:
+    def test_validate_dict_unknown_version(self, mock_validate: Mock):
         """Test handling of an unsupported SPDX context version."""
         mock_validate.side_effect = UnknownVersionError(
             "test.spdx.json has unknown version"
         )
 
-        result = ValidationEngine().validate(
-            document={
-                "@context": "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"
-            }
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"}
         )
 
         assert result.is_valid is False
@@ -89,7 +87,7 @@ class TestValidationEngine:
         )
 
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_schema_and_shacl_errors(self, mock_validate: Mock) -> None:
+    def test_validate_dict_schema_and_shacl_errors(self, mock_validate: Mock):
         """Test conversion of both schema and SHACL errors."""
         schema_error = CustomValidationError(
             "test.spdx.json",
@@ -110,10 +108,8 @@ class TestValidationEngine:
             errors=[schema_error, shacl_error]
         )
 
-        result = ValidationEngine().validate(
-            document={
-                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
-            }
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
         )
 
         assert result.is_valid is False
@@ -133,9 +129,9 @@ class TestValidationEngine:
         assert shacl_message.found_value == "_:CreationInfo2"
 
     @patch("spdx3_validator.engine.validate")
-    def test_validate_file_shacl_error_preserves_affected_element(
+    def test_validate_dict_shacl_error_preserves_affected_element(
         self, mock_validate: Mock
-    ) -> None:
+    ):
         """Test conversion of SHACL focus nodes into affected elements."""
         error = CustomValidationError(
             "test.spdx.json",
@@ -149,10 +145,8 @@ class TestValidationEngine:
         )
         mock_validate.return_value = CustomValidationResult(errors=[error])
 
-        result = ValidationEngine().validate(
-            document={
-                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"
-            }
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
         )
 
         assert result.is_valid is False
@@ -165,3 +159,65 @@ class TestValidationEngine:
         assert message.affected_element == "https://example.com/package/example"
         assert message.field_path == "creationInfo"
         assert message.found_value == "_:CreationInfo2"
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_file_success(self, mock_validate: Mock, tmp_path: Path):
+        """Test successful file validation without invoking the real validator."""
+        mock_validate.return_value = CustomValidationResult()
+        document = tmp_path / "document.spdx.json"
+        document.write_text(
+            json.dumps({"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}),
+            encoding="utf-8",
+        )
+
+        result = ValidationEngine().validate_file(document)
+
+        assert result.is_valid is True
+        assert result.schema_valid is True
+        assert result.semantic_valid is True
+        assert result.messages == []
+        mock_validate.assert_called_once()
+        assert mock_validate.call_args.kwargs["version"] == "3.0.1"
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_file_invalid_json(self, mock_validate: Mock, tmp_path: Path):
+        """Test handling of a file that does not contain valid JSON."""
+        document = tmp_path / "invalid.spdx.json"
+        document.write_text('{"@context":', encoding="utf-8")
+
+        result = ValidationEngine().validate_file(document)
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "json_parse_error"
+        assert "Invalid JSON" in result.messages[0].message
+        mock_validate.assert_not_called()
+
+    def test_validate_file_not_found(self, tmp_path: Path):
+        """Test validation of a non-existent file."""
+        document = tmp_path / "nonexistent.spdx.json"
+
+        result = ValidationEngine().validate_file(document)
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "file_not_found"
+        assert result.messages[0].message == f"File not found: {document}"
+
+    def test_validate_file_read_error(self, tmp_path: Path):
+        """Test handling of file read errors."""
+        document = tmp_path / "document.spdx.json"
+
+        with patch.object(Path, "open", side_effect=OSError("Permission denied")):
+            result = ValidationEngine().validate_file(document)
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "file_read_error"
+        assert "Error reading file" in result.messages[0].message

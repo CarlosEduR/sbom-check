@@ -6,10 +6,15 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from warnings import warn as warn_deprecated
 
 from pydantic import BaseModel, Field
+
+from sbom_validator.models import DocumentFormat
+
+if TYPE_CHECKING:
+    from sbom_validator.engine import ValidationResultProtocol
 
 
 class ValidationSeverity(str, Enum):
@@ -18,14 +23,6 @@ class ValidationSeverity(str, Enum):
     ERROR = "ERROR"
     WARNING = "WARNING"
     INFO = "INFO"
-
-
-class DocumentFormat(str, Enum):
-    """Supported SBOM document formats."""
-
-    SPDX = "SPDX"
-    SPDX3 = "SPDX3"
-    UNKNOWN = "unknown"
 
 
 class ProfileStatus(str, Enum):
@@ -110,14 +107,14 @@ class SbomCheckResult(BaseModel):
     @classmethod
     def combine(  # pylint: disable=too-many-positional-arguments,too-many-locals  # noqa: PLR0917,RUF100
         cls,
-        core_result: Any = None,  # core validator result
+        core_result: ValidationResultProtocol | None = None,
         profile_result: SbomCheckResult | None = None,
         profile_name: str | None = None,
         file_path: str | None = None,
         document_format: DocumentFormat = DocumentFormat.SPDX,
         spec_version: str | None = "2.3",
         *,
-        spdx_result: Any = None,
+        spdx_result: ValidationResultProtocol | None = None,
     ) -> SbomCheckResult:
         """Combine core validation result with profile validation result.
 
@@ -138,7 +135,7 @@ class SbomCheckResult(BaseModel):
             raise TypeError("Missing required argument: core_result")
 
         # Convert and collect all messages
-        messages = cls._convert_validation_messages(core_result)
+        messages = cls._convert_spdx_messages(core_result)
         if profile_result:
             messages.extend(profile_result.messages)
 
@@ -146,7 +143,7 @@ class SbomCheckResult(BaseModel):
         summary = cls._calculate_summary(messages)
 
         # Determine validity
-        core_valid = getattr(core_result, "is_valid", False)
+        core_valid = core_result.is_valid
         is_spdx_document = document_format is DocumentFormat.SPDX
         spdx_valid = core_valid if is_spdx_document else None
         profile_valid = profile_result.overall_valid if profile_result else None
@@ -177,15 +174,17 @@ class SbomCheckResult(BaseModel):
         )
 
     @classmethod
-    def _convert_validation_messages(cls, core_result: Any) -> list[ValidationMessage]:
-        """Convert validation messages to our format."""
+    def _convert_spdx_messages(
+        cls, spdx_result: ValidationResultProtocol
+    ) -> list[ValidationMessage]:
+        """Convert SPDX validation messages to our format."""
         messages: list[ValidationMessage] = []
 
-        if hasattr(core_result, "messages"):
-            for raw_message in core_result.messages:
+        if hasattr(spdx_result, "messages"):
+            for spdx_msg in spdx_result.messages:
                 # Determine severity level
-                if hasattr(raw_message, "severity"):
-                    severity_value = raw_message.severity.value.upper()
+                if hasattr(spdx_msg, "severity"):
+                    severity_value = spdx_msg.severity.value.upper()
                     if severity_value == "WARNING":
                         severity_level = ValidationSeverity.WARNING
                     elif severity_value == "INFO":
@@ -195,20 +194,20 @@ class SbomCheckResult(BaseModel):
                 else:
                     severity_level = ValidationSeverity.ERROR
 
-                converted_message = ValidationMessage(
+                validation_msg = ValidationMessage(
                     severity=severity_level,
-                    message=raw_message.message,
-                    rule_id=getattr(raw_message, "rule_id", None),
+                    message=spdx_msg.message,
+                    rule_id=getattr(spdx_msg, "rule_id", None),
                     field_path=getattr(
-                        raw_message, "field_path", getattr(raw_message, "path", None)
+                        spdx_msg, "field_path", getattr(spdx_msg, "path", None)
                     ),
-                    affected_element=getattr(raw_message, "affected_element", None),
-                    section_reference=getattr(raw_message, "section_reference", None),
-                    found_value=getattr(raw_message, "found_value", None),
-                    expected_value=getattr(raw_message, "expected_value", None),
-                    remediation=getattr(raw_message, "remediation", None),
+                    affected_element=getattr(spdx_msg, "affected_element", None),
+                    section_reference=getattr(spdx_msg, "section_reference", None),
+                    found_value=getattr(spdx_msg, "found_value", None),
+                    expected_value=getattr(spdx_msg, "expected_value", None),
+                    remediation=getattr(spdx_msg, "remediation", None),
                 )
-                messages.append(converted_message)
+                messages.append(validation_msg)
 
         return messages
 
@@ -233,7 +232,7 @@ class SbomCheckResult(BaseModel):
             failed_rules=failed_rules,
         )
 
-    def add_message(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0917
+    def add_message(  # pylint: disable=too-many-positional-arguments # noqa: PLR0917
         self,
         severity: ValidationSeverity,
         message: str,

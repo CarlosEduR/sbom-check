@@ -6,11 +6,17 @@
 from __future__ import annotations
 
 import json
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from warnings import warn
 
 from sbom_check.config.loader import ConfigLoader
-from sbom_check.detection import UnsupportedDocumentError, detect_document
+from sbom_check.detection import (
+    UnsupportedDocumentError,
+    detect_document,
+    get_document_version,
+)
 from sbom_check.models import (
     DocumentFormat,
     ProfileStatus,
@@ -47,12 +53,23 @@ class SbomCheckEngine:
             config = loader.load_profile(profile_name)
 
         self.config = config
-        self._validator_class = validator_class
+        self.engine = validator_class() if validator_class is not None else None
 
-        # Use core validation by default until document detection selects another engine.
-        selected_validator = validator_class or ValidationEngine
-        self.engine = selected_validator()
-        self._profile_applicable = selected_validator is ValidationEngine
+    @cached_property
+    def spdx_engine(self) -> ValidatorEngine:
+        """Legacy access to the SPDX 2.x validator.
+
+        Deprecated: validation now selects an engine based on the document.
+        """
+        warn(
+            "SbomCheckEngine.spdx_engine is deprecated; use validate_dict() or "
+            "validate_file(). Validation engines are selected automatically per "
+            "document, or explicitly with validator_class.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return ValidationEngine()
 
     def validate_file(self, file_path: Path | str) -> SbomCheckResult:
         """Validate an SBOM document from file.
@@ -67,8 +84,8 @@ class SbomCheckEngine:
 
         try:
             with file_path.open(encoding="utf-8") as f:
-                sbom_json = f.read()
-            return self.validate_json_string(sbom_json, str(file_path))
+                spdx_json = f.read()
+            return self.validate_json_string(spdx_json, str(file_path))
         except FileNotFoundError:
             result = SbomCheckResult(
                 overall_valid=False,
@@ -99,19 +116,19 @@ class SbomCheckEngine:
             return result
 
     def validate_json_string(
-        self, sbom_json: str, file_path: str | None = None
+        self, spdx_json: str, file_path: str | None = None
     ) -> SbomCheckResult:
         """Validate an SBOM document from JSON string.
 
         Args:
-            sbom_json: SBOM document as JSON string
+            spdx_json: SPDX document as JSON string
             file_path: Optional file path for context
 
         Returns:
             Complete validation result
         """
         try:
-            sbom_data = json.loads(sbom_json)
+            spdx_data = json.loads(spdx_json)
         except json.JSONDecodeError as e:
             result = SbomCheckResult(
                 overall_valid=False,
@@ -127,42 +144,45 @@ class SbomCheckEngine:
             )
             return result
 
-        return self.validate_dict(sbom_data, file_path)
+        return self.validate_dict(spdx_data, file_path)
 
     def validate_dict(
-        self, sbom_data: dict[str, Any], file_path: str | None = None
+        self, spdx_data: dict[str, Any], file_path: str | None = None
     ) -> SbomCheckResult:
-        """Validate an SBOM document from dictionary.
+        """Validate an SPDX document from dictionary.
 
         Args:
-            sbom_data: SBOM document as dictionary
+            spdx_data: SPDX document as dictionary
             file_path: Optional file path for context
 
         Returns:
             Complete validation result
         """
-        detected = None
-        selected_engine = self.engine
-        profile_applicable = self._profile_applicable
-        document_format: DocumentFormat = DocumentFormat.SPDX
-        spec_version = "2.3" if profile_applicable else None
-        if self._validator_class is None:
+        selected_engine = None
+        document_format: DocumentFormat = DocumentFormat.UNKNOWN
+        spec_version = None
+        if self.engine is None:
             try:
-                detected = detect_document(sbom_data)
+                detected = detect_document(spdx_data)
             except UnsupportedDocumentError as error:
                 return self._unsupported_result(error, file_path=file_path)
 
             selected_engine = detected.validator_class()
-            profile_applicable = detected.format is DocumentFormat.SPDX
             document_format = detected.format
             spec_version = detected.spec_version
+        else:
+            selected_engine = self.engine
+            document_format = selected_engine.format
+            spec_version = get_document_version(document_format, spdx_data)
+
+        profile_applicable = document_format is DocumentFormat.SPDX
 
         # Run the selected format engine.
-        core_result = selected_engine.validate(sbom_data, file_path=file_path)
+        core_result = selected_engine.validate_dict(spdx_data)
 
         # The completeness profile is SPDX-specific.
         profile_result = (
-            self._validate_profile_requirements(sbom_data)
+            self._validate_profile_requirements(spdx_data)
             if profile_applicable
             else None
         )
@@ -204,12 +224,12 @@ class SbomCheckEngine:
         )
 
     def _validate_profile_requirements(
-        self, sbom_data: dict[str, Any]
+        self, spdx_data: dict[str, Any]
     ) -> SbomCheckResult:
         """Validate document against profile-specific requirements.
 
         Args:
-            sbom_data: SBOM document as dictionary
+            spdx_data: SPDX document as dictionary
 
         Returns:
             Profile validation result
@@ -222,31 +242,31 @@ class SbomCheckEngine:
         )
 
         # Validate document requirements
-        self._validate_document_requirements(sbom_data, result)
+        self._validate_document_requirements(spdx_data, result)
 
         # Validate package requirements
-        self._validate_package_requirements(sbom_data, result)
+        self._validate_package_requirements(spdx_data, result)
 
         # Validate file requirements
-        self._validate_file_requirements(sbom_data, result)
+        self._validate_file_requirements(spdx_data, result)
 
         # Validate relationship requirements
-        self._validate_relationship_requirements(sbom_data, result)
+        self._validate_relationship_requirements(spdx_data, result)
 
         # Run custom rules
-        self._validate_custom_rules(sbom_data, result)
+        self._validate_custom_rules(spdx_data, result)
 
         return result
 
     def _validate_document_requirements(
-        self, sbom_data: dict[str, Any], result: SbomCheckResult
+        self, spdx_data: dict[str, Any], result: SbomCheckResult
     ) -> None:
         """Validate document-level requirements."""
         doc_config = self.config.document_requirements
 
         # Check required fields
         for field in doc_config.required_fields:
-            if not self._get_nested_field(sbom_data, field):
+            if not self._get_nested_field(spdx_data, field):
                 result.add_message(
                     ValidationSeverity.ERROR,
                     f"Required field '{field}' is missing",
@@ -257,7 +277,7 @@ class SbomCheckEngine:
 
         # Validate field-specific rules
         for field_name, rule in doc_config.field_validation.items():
-            field_value = self._get_nested_field(sbom_data, field_name)
+            field_value = self._get_nested_field(spdx_data, field_name)
 
             if (
                 hasattr(rule, "exact_value")
@@ -303,10 +323,10 @@ class SbomCheckEngine:
                 )
 
     def _validate_package_requirements(
-        self, sbom_data: dict[str, Any], result: SbomCheckResult
+        self, spdx_data: dict[str, Any], result: SbomCheckResult
     ) -> None:
         """Validate package-level requirements."""
-        if not (packages := sbom_data.get("packages", [])):
+        if not (packages := spdx_data.get("packages", [])):
             return
 
         pkg_config = self.config.package_requirements
@@ -420,25 +440,25 @@ class SbomCheckEngine:
                 )
 
     def _validate_file_requirements(
-        self, sbom_data: dict[str, Any], result: SbomCheckResult
+        self, spdx_data: dict[str, Any], result: SbomCheckResult
     ) -> None:
         """Validate file-level requirements."""
         # This is a placeholder for file validation logic
         # Implementation would depend on the specific file requirements
         # Currently no file-level validation rules are implemented
-        _ = sbom_data, result  # Acknowledge unused parameters
+        _ = spdx_data, result  # Acknowledge unused parameters
 
     def _validate_relationship_requirements(
-        self, sbom_data: dict[str, Any], result: SbomCheckResult
+        self, spdx_data: dict[str, Any], result: SbomCheckResult
     ) -> None:
         """Validate relationship requirements."""
-        relationships = sbom_data.get("relationships", [])
+        relationships = spdx_data.get("relationships", [])
         rel_config = self.config.relationship_requirements
 
         if rel_config.no_isolated_elements:
             # Check that all elements are properly related
             # This is a simplified check - full implementation would be more complex
-            document_id = sbom_data.get("SPDXID", "SPDXRef-DOCUMENT")
+            document_id = spdx_data.get("SPDXID", "SPDXRef-DOCUMENT")
 
             # Check for DESCRIBES relationship from document
             has_describes = any(
@@ -456,13 +476,13 @@ class SbomCheckEngine:
                 )
 
     def _validate_custom_rules(
-        self, _sbom_data: dict[str, Any], _result: SbomCheckResult
+        self, _spdx_data: dict[str, Any], _result: SbomCheckResult
     ) -> None:
         """Validate custom rules."""
         for _rule in self.config.custom_rules:
             # This is a placeholder for custom rule validation
             # In practice, you'd implement specific validation functions
-            # The _sbom_data and _result parameters would be used here
+            # The _spdx_data and _result parameters would be used here
             pass
 
     def _get_nested_field(self, data: dict[str, Any], field_path: str) -> Any:

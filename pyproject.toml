@@ -33,7 +33,7 @@ dependencies = [
     # spdx-validator dependencies
     "jsonschema>=4.25.1",
     # spdx3-validator dependencies
-    "spdx3-validate==0.0.7"
+    "spdx3-validate==0.0.7",
 ]
 
 [project.scripts]
@@ -107,7 +107,7 @@ ignore = [
 "tests/*" = ["ARG", "S101", "PLR2004"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["sbom_check", "spdx_validator"]
+known-first-party = ["sbom_check", "sbom_validator", "spdx_validator", "spdx3_validator"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -177,7 +177,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["sbom_check", "spdx_validator"]
+source = ["sbom_check", "sbom_validator", "spdx_validator", "spdx3_validator"]
 omit = [
     "*/tests/*",
     "*/test_*",

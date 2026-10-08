@@ -74,15 +74,16 @@ def detect_document(data: Any) -> DetectedDocument:
     )
 
 
-def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
+def _detect_spdx_version(data: dict[str, Any]) -> str | None:
     version = data.get("spdxVersion")
     spec_version = (
         version.removeprefix("SPDX-") if isinstance(version, str) and version else None
     )
-    return DetectedDocument(DocumentFormat.SPDX, spec_version, ValidationEngine)
+
+    return spec_version
 
 
-def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
+def _detect_spdx3_version(data: dict[str, Any]) -> str | None:
     graph = data.get("@graph", [])
     spec_version = None
 
@@ -93,7 +94,28 @@ def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
                 spec_version = version
                 break
 
+    return spec_version
+
+
+def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
+    spec_version = _detect_spdx_version(data)
+    return DetectedDocument(DocumentFormat.SPDX, spec_version, ValidationEngine)
+
+
+def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
+    spec_version = _detect_spdx3_version(data)
     return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
+
+
+def get_document_version(
+    document_format: DocumentFormat, data: dict[str, Any]
+) -> str | None:
+    version_detector = {
+        DocumentFormat.SPDX: _detect_spdx_version,
+        DocumentFormat.SPDX3: _detect_spdx3_version,
+    }
+
+    return version_detector[document_format](data)
 
 
 __all__ = [

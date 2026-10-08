@@ -6,6 +6,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from spdx3_validate import validate
 
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
@@ -24,6 +25,7 @@ def _shacl_messages(document: dict, path: Path) -> list:
     ]
 
 
+@pytest.mark.integration
 class TestShaclDiagnosticParser:
     """Integration tests for SHACL diagnostic translation."""
 

@@ -4,8 +4,6 @@
 """SPDX 3.0.1 validation engine."""
 
 import json
-from collections.abc import Generator
-from contextlib import contextmanager
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,6 +16,7 @@ from spdx3_validate.core import ValidationError as CustomValidationError
 from spdx3_validate.core import ValidationResult as CustomValidationResult
 
 from sbom_validator.engine import ValidatorEngine
+from sbom_validator.models import DocumentFormat
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
 from spdx3_validator.models import (
     ValidationMessage,
@@ -31,25 +30,7 @@ SPDX_VERSION = "3.0.1"
 class ValidationEngine(ValidatorEngine):
     def __init__(self) -> None:
         """Initialize the validation engine for SPDX 3.0.1."""
-
-    @staticmethod
-    @contextmanager
-    def _validation_source(
-        document: dict[str, Any] | None,
-        file_path: str | Path | None,
-    ) -> Generator[Path]:
-        """Provide a file path for the file-based SPDX 3 validator."""
-        if file_path is not None:
-            yield Path(file_path)
-            return
-
-        if document is None:
-            raise ValueError("Either document or file_path must be provided")
-
-        with TemporaryDirectory() as temp_dir:
-            source_path = Path(temp_dir) / "document.spdx.json"
-            source_path.write_text(json.dumps(document), encoding="utf-8")
-            yield source_path
+        self.format = DocumentFormat.SPDX3
 
     @staticmethod
     def _unique_errors(
@@ -66,21 +47,28 @@ class ValidationEngine(ValidatorEngine):
         unique = []
 
         for error in errors:
-            if  (key := (error.source, error.kind, error.message)) not in seen:
+            if (key := (error.source, error.kind, error.message)) not in seen:
                 seen.add(key)
                 unique.append(error)
 
         return unique
 
-    def validate(  # pylint: disable=too-many-return-statements  # noqa: PLR0911
-        self, document: dict[str, Any] | None = None, file_path: str | Path | None = None
+    @staticmethod
+    def _user_facing_error(error: Exception, source_path: Path | None) -> str:
+        """Remove the temporary source path from a validation error message."""
+        message = str(error)
+        if source_path is not None:
+            message = message.replace(str(source_path), "document")
+        return message
+
+    def _validate(  # pylint: disable=too-many-return-statements  # noqa: PLR0911
+        self, document: dict[str, Any]
     ) -> ValidationResult:
         """
-        Validate SPDX 3.0.1 document from file.
+        Validate SPDX 3.0.1 document.
 
         Args:
             document: Parsed SPDX 3.0.1 document to validate.
-            file_path: Path to SPDX JSON file.
 
         Returns:
             Validation result
@@ -88,29 +76,11 @@ class ValidationEngine(ValidatorEngine):
         all_messages: list[ValidationMessage] = []
         schema_valid = True
         semantic_valid = True
+        source_path: Path | None = None
         try:
-            with self._validation_source(document, file_path) as source_path:
-                if (source_document := document) is None:
-                    source_document = json.loads(
-                        source_path.read_text(encoding="utf-8")
-                    )
-
-                if "@context" not in source_document:
-                    return ValidationResult(
-                        is_valid=False,
-                        messages=[
-                            ValidationMessage(
-                                severity=ValidationSeverity.ERROR,
-                                message=(
-                                    "The SPDX document is missing the required "
-                                    "@context."
-                                ),
-                                rule_id="spdx3_missing_context",
-                            )
-                        ],
-                        schema_valid=False,
-                        semantic_valid=False,
-                    )
+            with TemporaryDirectory() as temp_dir:
+                source_path = Path(temp_dir) / "document.spdx.json"
+                source_path.write_text(json.dumps(document), encoding="utf-8")
 
                 result: CustomValidationResult = validate(
                     sources=str(source_path), version=SPDX_VERSION
@@ -159,7 +129,10 @@ class ValidationEngine(ValidatorEngine):
                 messages=[
                     ValidationMessage(
                         severity=ValidationSeverity.ERROR,
-                        message=f"Unsupported SPDX version: {e}",
+                        message=(
+                            "Unsupported SPDX version: "
+                            f"{self._user_facing_error(e, source_path)}"
+                        ),
                         rule_id="unsupported_spdx_version",
                     )
                 ],
@@ -172,7 +145,10 @@ class ValidationEngine(ValidatorEngine):
                 messages=[
                     ValidationMessage(
                         severity=ValidationSeverity.ERROR,
-                        message=f"SPDX validation error: {e}",
+                        message=(
+                            "SPDX validation error: "
+                            f"{self._user_facing_error(e, source_path)}"
+                        ),
                         rule_id="spdx_validate_error",
                     )
                 ],
@@ -185,8 +161,8 @@ class ValidationEngine(ValidatorEngine):
                 messages=[
                     ValidationMessage(
                         severity=ValidationSeverity.ERROR,
-                        message=f"File not found: {file_path}",
-                        rule_id="file_read_error",
+                        message="SPDX validation temporary file not found",
+                        rule_id="temporary_file_not_found",
                     )
                 ],
                 schema_valid=False,
@@ -235,6 +211,116 @@ class ValidationEngine(ValidatorEngine):
                         severity=ValidationSeverity.ERROR,
                         message=f"Invalid SPDX 3 validation input: {e}",
                         rule_id="spdx3_validation_input_error",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
+    def validate_json_string(self, spdx_json: str) -> ValidationResult:
+        """Validate SPDX document from JSON string.
+
+        Args:
+            spdx_json: SPDX document as JSON string
+
+        Returns:
+            Combined validation result
+        """
+        try:
+            spdx_data = json.loads(spdx_json)
+        except json.JSONDecodeError as e:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=f"Invalid JSON: {e!s}",
+                        rule_id="json_parse_error",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
+        return self.validate_dict(spdx_data)
+
+    def validate_dict(self, spdx_data: dict[str, Any]) -> ValidationResult:
+        """Validate SPDX document from dictionary.
+
+        Args:
+            spdx_data: SPDX document as dictionary (already normalized if from JSON)
+
+        Returns:
+            Combined validation result
+        """
+        runtime_document: Any = spdx_data
+        if not isinstance(runtime_document, dict):
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=(
+                            "Unsupported input: the JSON document must be a top-level object."
+                        ),
+                        rule_id="unsupported_format",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
+        if "@context" not in spdx_data:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=("The SPDX document is missing the required @context."),
+                        rule_id="spdx3_missing_context",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
+        return self._validate(spdx_data)
+
+    def validate_file(self, file_path: str | Path) -> ValidationResult:
+        """Validate SPDX document from file.
+
+        Args:
+            file_path: Path to SPDX JSON file
+
+        Returns:
+            Validation result
+        """
+        try:
+            file_path = Path(file_path)
+            with file_path.open(encoding="utf-8") as f:
+                spdx_json = f.read()
+            return self.validate_json_string(spdx_json)
+        except FileNotFoundError:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=f"File not found: {file_path}",
+                        rule_id="file_not_found",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+        except (OSError, UnicodeDecodeError) as e:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=f"Error reading file {file_path}: {e!s}",
+                        rule_id="file_read_error",
                     )
                 ],
                 schema_valid=False,

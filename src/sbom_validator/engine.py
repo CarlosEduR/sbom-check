@@ -6,27 +6,41 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
+
+    from sbom_validator.models import DocumentFormat
+
+
+class ValidationResultProtocol(Protocol):
+    """Common result interface exposed by format-specific validators."""
+
+    @property
+    def is_valid(self) -> bool:
+        """Whether the validated document is valid."""
+        ...
+
+    @property
+    def messages(self) -> Sequence[Any]:
+        """Validation messages produced for the document."""
+        ...
 
 
 class ValidatorEngine(ABC):
     """Interface required by every format-specific validation engine."""
 
-    @abstractmethod
-    def __init__(
-        self,
-        schema_path: str | Path | None = None,
-        enable_schema_validation: bool = True,
-        enable_semantic_validation: bool = True,
-    ) -> None:
-        """Initialize the validator with validation settings."""
+    format: DocumentFormat
 
     @abstractmethod
-    def validate(self, document: dict[str, Any], file_path: str | None = None) -> Any:
-        """Validate a parsed SBOM document against its declared schema."""
+    def validate_dict(self, spdx_data: dict[str, Any]) -> ValidationResultProtocol:
+        """Validate an SBOM document represented as a dictionary."""
+
+    @abstractmethod
+    def validate_file(self, file_path: str | Path) -> ValidationResultProtocol:
+        """Validate an SBOM document loaded from a file."""
 
 
-__all__ = ["ValidatorEngine"]
+__all__ = ["ValidationResultProtocol", "ValidatorEngine"]

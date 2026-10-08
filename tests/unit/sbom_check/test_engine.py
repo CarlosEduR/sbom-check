@@ -7,9 +7,12 @@ import json
 from copy import deepcopy
 from unittest.mock import Mock, patch
 
+from spdx3_validate.core import ValidationResult as CustomValidationResult
+
 from sbom_check.config.loader import ConfigLoader
 from sbom_check.engine import SbomCheckEngine
 from sbom_check.models import ProfileStatus, SbomCheckResult, ValidationSeverity
+from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 
 
 def test_engine_initialization():
@@ -461,8 +464,10 @@ def test_engine_returns_structured_result_for_unsupported_input():
     assert result.messages[0].rule_id == "unsupported_format"
 
 
-def test_engine_auto_detects_spdx3_without_explicit_validator_class():
+@patch("spdx3_validator.engine.validate")
+def test_engine_auto_detects_spdx3_without_explicit_validator_class(mock_validate):
     """Direct engine callers receive automatic format dispatch."""
+    mock_validate.return_value = CustomValidationResult()
     result = SbomCheckEngine().validate_dict(
         {
             "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
@@ -481,3 +486,35 @@ def test_engine_auto_detects_spdx3_without_explicit_validator_class():
     assert result.document_format == "SPDX3"
     assert result.spec_version == "3.0.1"
     assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    mock_validate.assert_called_once()
+    assert mock_validate.call_args.kwargs["version"] == "3.0.1"
+
+
+@patch("spdx3_validator.engine.validate")
+def test_engine_uses_explicit_spdx3_validator_class(mock_validate):
+    """Run an SPDX 3 document through an explicitly selected validator."""
+    mock_validate.return_value = CustomValidationResult()
+    engine = SbomCheckEngine(validator_class=SPDX3ValidationEngine)
+
+    result = engine.validate_dict(
+        {
+            "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+            "@graph": [
+                {
+                    "@id": "_:ci",
+                    "type": "CreationInfo",
+                    "specVersion": "3.0.1",
+                }
+            ],
+        }
+    )
+
+    assert isinstance(engine.engine, SPDX3ValidationEngine)
+    assert result.overall_valid
+    assert result.core_valid
+    assert result.spdx_valid is None
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert result.document_format == "SPDX3"
+    assert result.spec_version == "3.0.1"
+    mock_validate.assert_called_once()
+    assert mock_validate.call_args.kwargs["version"] == "3.0.1"

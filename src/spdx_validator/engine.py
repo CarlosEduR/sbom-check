@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from sbom_validator.engine import ValidatorEngine
+from sbom_validator.models import DocumentFormat
 from spdx_validator.models import (
     SpdxDocument,
     ValidationMessage,
@@ -48,25 +49,20 @@ class ValidationEngine(ValidatorEngine):
         if enable_semantic_validation:
             self.semantic_validator = SemanticValidator()
 
-    def validate(
-        self, document: dict[str, Any], file_path: str | None = None
-    ) -> ValidationResult:
-        """Validate a parsed SPDX document through the engine pipeline."""
-        del file_path # Unused in this implementation
-        return self.validate_dict(document)
+        self.format = DocumentFormat.SPDX
 
-    def validate_json_string(self, json_string: str) -> ValidationResult:
+    def validate_json_string(self, spdx_json: str) -> ValidationResult:
         """Validate SPDX document from JSON string.
 
         Args:
-            json_string: SPDX document as JSON string
+            spdx_json: SPDX document as JSON string
 
         Returns:
             Combined validation result
         """
         try:
             # Parse JSON with custom object hook for normalization during parsing
-            spdx_data = json.loads(json_string, object_hook=self._normalize_object_hook)
+            spdx_data = json.loads(spdx_json, object_hook=self._normalize_object_hook)
         except json.JSONDecodeError as e:
             return ValidationResult(
                 is_valid=False,
@@ -104,7 +100,7 @@ class ValidationEngine(ValidatorEngine):
                 obj["referenceCategory"] = "PERSISTENT-ID"
         return obj
 
-    def _normalize_data(self, data: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_spdx_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Normalize SPDX data to handle spec inconsistencies.
 
         Efficiently converts underscore variants to hyphen variants for enum values:
@@ -138,7 +134,7 @@ class ValidationEngine(ValidatorEngine):
         return data
 
     def _enhance_pydantic_error_message(
-        self, error_message: str, document: dict[str, Any]
+        self, error_message: str, spdx_data: dict[str, Any]
     ) -> str:
         """Enhance Pydantic error message by replacing package indices with SPDX IDs.
 
@@ -154,7 +150,7 @@ class ValidationEngine(ValidatorEngine):
 
         def replace_package_reference(match: re.Match[str]) -> str:
             package_index = int(match.group(1))
-            packages = document.get("packages", [])
+            packages = spdx_data.get("packages", [])
 
             if 0 <= package_index < len(packages):
                 package = packages[package_index]
@@ -166,29 +162,28 @@ class ValidationEngine(ValidatorEngine):
 
         return re.sub(pattern, replace_package_reference, error_message)
 
-    def validate_dict(self, document: dict[str, Any]) -> ValidationResult:
+    def validate_dict(self, spdx_data: dict[str, Any]) -> ValidationResult:
         """Validate SPDX document from dictionary.
 
         Args:
-            document: SPDX document as dictionary (already normalized if from JSON)
+            spdx_data: SPDX document as dictionary (already normalized if from JSON)
 
         Returns:
             Combined validation result
         """
-        document = self._normalize_data(document)
         all_messages: list[ValidationMessage] = []
         schema_valid = True
         semantic_valid = True
 
         # Perform JSON schema validation
         if self.enable_schema_validation and self.schema_validator:
-            schema_result = self.schema_validator.validate(document)
+            schema_result = self.schema_validator.validate(spdx_data)
             all_messages.extend(schema_result.messages)
             schema_valid = schema_result.schema_valid
 
         # Perform semantic validation only if schema validation passes
         if self.enable_semantic_validation and self.semantic_validator and schema_valid:
-            semantic_result = self.semantic_validator.validate(document)
+            semantic_result = self.semantic_validator.validate(spdx_data)
             all_messages.extend(semantic_result.messages)
             semantic_valid = semantic_result.semantic_valid
         elif self.enable_semantic_validation and not schema_valid:
@@ -204,10 +199,10 @@ class ValidationEngine(ValidatorEngine):
 
         # Try to parse with Pydantic for additional validation
         try:
-            SpdxDocument.model_validate(document)
+            SpdxDocument.model_validate(spdx_data)
         except (ValueError, TypeError, AttributeError) as e:
             # Enhance error message with SPDX IDs
-            enhanced_message = self._enhance_pydantic_error_message(str(e), document)
+            enhanced_message = self._enhance_pydantic_error_message(str(e), spdx_data)
             all_messages.append(
                 ValidationMessage(
                     severity=ValidationSeverity.ERROR,

@@ -22,12 +22,7 @@ def test_detect_spdx_23() -> None:
 
 def test_detect_spdx_3_0_1():
     detected = detect_document(
-        {
-            "@graph": [
-                {"type": "SpdxDocument"},
-                {"type": "CreationInfo", "specVersion": "3.0.1"},
-            ]
-        }
+        {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
     )
 
     assert detected.format is DocumentFormat.SPDX3
@@ -35,12 +30,9 @@ def test_detect_spdx_3_0_1():
     assert detected.validator_class is SPDX3ValidationEngine
 
 
-def test_detect_spdx3_without_creation_info_version() -> None:
-    detected = detect_document({"@graph": []})
-
-    assert detected.format is DocumentFormat.SPDX3
-    assert detected.spec_version is None
-    assert detected.validator_class is SPDX3ValidationEngine
+def test_reject_spdx3_graph_without_context():
+    with pytest.raises(UnsupportedDocumentError, match="does not declare"):
+        detect_document({"@graph": []})
 
 
 def test_reject_missing_format_markers() -> None:

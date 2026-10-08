@@ -6,11 +6,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sbom_check.models import DocumentFormat
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 from spdx_validator.engine import ValidationEngine
+
+if TYPE_CHECKING:
+    from sbom_validator.engine import ValidatorEngine
+
+SPDX3_CONTEXT_PREFIX = "https://spdx.org/rdf/3."
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,7 +24,7 @@ class DetectedDocument:
 
     format: DocumentFormat
     spec_version: str | None
-    validator_class: type[Any]
+    validator_class: type[ValidatorEngine]
 
 
 class UnsupportedDocumentError(ValueError):
@@ -51,6 +56,10 @@ def detect_document(data: Any) -> DetectedDocument:
             "Unsupported input: the JSON document must be a top-level object"
         )
 
+    context = data.get("@context")
+    if isinstance(context, str) and context.startswith(SPDX3_CONTEXT_PREFIX):
+        return _detect_spdx3(data)
+
     has_spdx_marker = any(
         marker in data
         for marker in (
@@ -64,9 +73,6 @@ def detect_document(data: Any) -> DetectedDocument:
 
     if has_spdx_marker:
         return _detect_spdx(data)
-
-    if isinstance(data.get("@graph"), list):
-        return _detect_spdx3(data)
 
     raise UnsupportedDocumentError(
         "Unsupported input: document does not declare SPDX format",
@@ -84,17 +90,14 @@ def _detect_spdx_version(data: dict[str, Any]) -> str | None:
 
 
 def _detect_spdx3_version(data: dict[str, Any]) -> str | None:
-    graph = data.get("@graph", [])
-    spec_version = None
+    context = data.get("@context")
+    if not isinstance(context, str) or not context.startswith(
+        "https://spdx.org/rdf/"
+    ):
+        return None
 
-    for item in graph:
-        if isinstance(item, dict) and item.get("type") == "CreationInfo":
-            version = item.get("specVersion")
-            if isinstance(version, str) and version:
-                spec_version = version
-                break
-
-    return spec_version
+    version, _, _ = context.removeprefix("https://spdx.org/rdf/").partition("/")
+    return version or None
 
 
 def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:

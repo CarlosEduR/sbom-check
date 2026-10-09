@@ -73,17 +73,7 @@ def validate_single_file(
     # Detection and validator selection are owned by SbomCheckEngine.
     engine = SbomCheckEngine(sbom_config)
     result = engine.validate_file(file_path)
-    _ensure_result_document_metadata(result)
     return file_path, result
-
-
-def _ensure_result_document_metadata(result: Any) -> None:
-    """Fill metadata defaults without overwriting engine-detected values."""
-    if not isinstance(getattr(result, "document_format", None), str):
-        result.document_format = "unknown"
-    spec_version = getattr(result, "spec_version", None)
-    if spec_version is not None and not isinstance(spec_version, str):
-        result.spec_version = None
 
 
 def _has_remote_resource_failure(result: Any) -> bool:
@@ -144,8 +134,8 @@ def output_json_multiple(results: list[tuple[Path, Any]]) -> None:
                 "overall_valid": result.overall_valid,
                 "document_format": result.document_format,
                 "spec_version": result.spec_version,
-                "core_valid": _result_core_valid(result),
-                "profile_status": _result_profile_status(result).value,
+                "core_valid": result.core_valid,
+                "profile_status": result.profile_status.value,
                 "spdx_valid": result.spdx_valid,
                 "profile_valid": result.profile_valid,
                 "profile_name": result.profile_name,
@@ -302,7 +292,6 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
             # Detection and validator selection are owned by SbomCheckEngine.
             engine = SbomCheckEngine(sbom_config)
             result = engine.validate_file(file_path)
-            _ensure_result_document_metadata(result)
             results.append((file_path, result))
 
             if not result.overall_valid:
@@ -411,24 +400,6 @@ def _validate_config_file(loader: ConfigLoader, config_path: str) -> None:
         sys.exit(3)
 
 
-def _result_core_valid(result: Any) -> bool:
-    """Read format-neutral core status with legacy-result compatibility."""
-    value = getattr(result, "core_valid", None)
-    return value if isinstance(value, bool) else bool(result.spdx_valid)
-
-
-def _result_profile_status(result: Any) -> ProfileStatus:
-    """Read explicit profile status with legacy-result compatibility."""
-    value = getattr(result, "profile_status", None)
-    if isinstance(value, ProfileStatus):
-        return value
-    if getattr(result, "document_format", "SPDX") == "SPDX":
-        return (
-            ProfileStatus.PASSED if bool(result.profile_valid) else ProfileStatus.FAILED
-        )
-    return ProfileStatus.NOT_APPLICABLE
-
-
 def _print_text_result(result: Any, file_path: str) -> None:
     """Print validation result in text format."""
     console.print(f"\n[bold]Validation Results for: {file_path}[/bold]")
@@ -444,12 +415,12 @@ def _print_text_result(result: Any, file_path: str) -> None:
     format_name = getattr(format_name, "value", format_name)
     specification = f" {result.spec_version}" if result.spec_version else ""
     core_label = f"{format_name}{specification} Validation"
-    if _result_core_valid(result):
+    if result.core_valid:
         console.print(f"[green]✅ {core_label}: PASSED[/green]")
     else:
         console.print(f"[red]❌ {core_label}: FAILED[/red]")
 
-    profile_status = _result_profile_status(result)
+    profile_status = result.profile_status
     if profile_status is ProfileStatus.NOT_APPLICABLE:
         console.print("[blue]Info: Profile Validation: NOT APPLICABLE[/blue]")
     elif profile_status is ProfileStatus.PASSED:
@@ -521,8 +492,8 @@ def _print_json_result(result: Any) -> None:
         "overall_valid": result.overall_valid,
         "document_format": result.document_format,
         "spec_version": result.spec_version,
-        "core_valid": _result_core_valid(result),
-        "profile_status": _result_profile_status(result).value,
+        "core_valid": result.core_valid,
+        "profile_status": result.profile_status.value,
         "spdx_valid": result.spdx_valid,
         "profile_valid": result.profile_valid,
         "profile_name": result.profile_name,

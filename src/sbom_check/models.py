@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 from warnings import warn as warn_deprecated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from sbom_validator.models import DocumentFormat
 
@@ -108,6 +108,30 @@ class SbomCheckResult(BaseModel):
     document_format: DocumentFormat = DocumentFormat.UNKNOWN
     spec_version: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_legacy_status_fields(cls, values: Any) -> Any:
+        """Derive new status fields for callers using the legacy fields."""
+        if not isinstance(values, dict):
+            return values
+
+        normalized = dict(values)
+        if "core_valid" not in normalized and isinstance(
+            normalized.get("spdx_valid"), bool
+        ):
+            normalized["core_valid"] = normalized["spdx_valid"]
+
+        if "profile_status" not in normalized and isinstance(
+            normalized.get("profile_valid"), bool
+        ):
+            normalized["profile_status"] = (
+                ProfileStatus.PASSED
+                if normalized["profile_valid"]
+                else ProfileStatus.FAILED
+            )
+
+        return normalized
+
     @classmethod
     def combine(  # pylint: disable=too-many-positional-arguments,too-many-locals  # noqa: PLR0917,RUF100
         cls,
@@ -115,8 +139,8 @@ class SbomCheckResult(BaseModel):
         profile_result: SbomCheckResult | None = None,
         profile_name: str | None = None,
         file_path: str | None = None,
-        document_format: DocumentFormat = DocumentFormat.SPDX,
-        spec_version: str | None = "2.3",
+        document_format: DocumentFormat = DocumentFormat.UNKNOWN,
+        spec_version: str | None = None,
         *,
         spdx_result: ValidationResultProtocol | None = None,
     ) -> SbomCheckResult:
@@ -281,7 +305,9 @@ class SbomCheckResult(BaseModel):
                 info=current_summary.info,
             )
             self.overall_valid = False
-            self.profile_valid = False
+            if self.profile_valid is not None:
+                self.profile_valid = False
+                self.profile_status = ProfileStatus.FAILED
         elif severity == ValidationSeverity.WARNING:
             self.summary = ValidationSummary(
                 total_rules=current_summary.total_rules,

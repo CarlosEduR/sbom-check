@@ -89,8 +89,12 @@ class SbomCheckEngine:
         except FileNotFoundError:
             result = SbomCheckResult(
                 overall_valid=False,
-                spdx_valid=False,
-                profile_valid=False,
+                spdx_valid=None,
+                profile_valid=None,
+                core_valid=False,
+                profile_status=ProfileStatus.NOT_APPLICABLE,
+                document_format=DocumentFormat.UNKNOWN,
+                spec_version=None,
                 file_path=str(file_path),
                 profile_name=self.config.metadata.name,
             )
@@ -103,8 +107,12 @@ class SbomCheckEngine:
         except (OSError, UnicodeDecodeError) as e:
             result = SbomCheckResult(
                 overall_valid=False,
-                spdx_valid=False,
-                profile_valid=False,
+                spdx_valid=None,
+                profile_valid=None,
+                core_valid=False,
+                profile_status=ProfileStatus.NOT_APPLICABLE,
+                document_format=DocumentFormat.UNKNOWN,
+                spec_version=None,
                 file_path=str(file_path),
                 profile_name=self.config.metadata.name,
             )
@@ -132,8 +140,12 @@ class SbomCheckEngine:
         except json.JSONDecodeError as e:
             result = SbomCheckResult(
                 overall_valid=False,
-                spdx_valid=False,
-                profile_valid=False,
+                spdx_valid=None,
+                profile_valid=None,
+                core_valid=False,
+                profile_status=ProfileStatus.NOT_APPLICABLE,
+                document_format=DocumentFormat.UNKNOWN,
+                spec_version=None,
                 file_path=file_path,
                 profile_name=self.config.metadata.name,
             )
@@ -238,7 +250,11 @@ class SbomCheckEngine:
             overall_valid=True,
             spdx_valid=True,  # This will be overridden in combine()
             profile_valid=True,
+            core_valid=True,
+            profile_status=ProfileStatus.PASSED,
             profile_name=self.config.metadata.name,
+            document_format=DocumentFormat.SPDX,
+            spec_version="2.3",
         )
 
         # Validate document requirements

@@ -44,8 +44,10 @@ def test_validate_json_string_invalid_json():
     result = engine.validate_json_string("invalid json")
 
     assert not result.overall_valid
-    assert not result.spdx_valid
-    assert not result.profile_valid
+    assert result.spdx_valid is None
+    assert result.profile_valid is None
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
     assert len(result.messages) > 0
     assert result.messages[0].severity == ValidationSeverity.ERROR
     assert "Invalid JSON" in result.messages[0].message
@@ -128,8 +130,10 @@ def test_validate_file_not_found():
     result = engine.validate_file("nonexistent.json")
 
     assert not result.overall_valid
-    assert not result.spdx_valid
-    assert not result.profile_valid
+    assert result.spdx_valid is None
+    assert result.profile_valid is None
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
     assert len(result.messages) > 0
     assert result.messages[0].severity == ValidationSeverity.ERROR
     assert "File not found" in result.messages[0].message
@@ -148,8 +152,10 @@ def test_validate_file_read_error(tmp_path):
         result = engine.validate_file(test_file)
 
         assert not result.overall_valid
-        assert not result.spdx_valid
-        assert not result.profile_valid
+        assert result.spdx_valid is None
+        assert result.profile_valid is None
+        assert result.core_valid is False
+        assert result.profile_status is ProfileStatus.NOT_APPLICABLE
         assert len(result.messages) > 0
         assert result.messages[0].severity == ValidationSeverity.ERROR
         assert "Error reading file" in result.messages[0].message

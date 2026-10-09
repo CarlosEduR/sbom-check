@@ -6,6 +6,7 @@
 from types import SimpleNamespace
 
 from sbom_check.models import (
+    ProfileStatus,
     SbomCheckResult,
     ValidationMessage,
     ValidationSeverity,
@@ -114,6 +115,8 @@ def test_sbom_check_result_creation():
     assert result.overall_valid is True
     assert result.spdx_valid is True
     assert result.profile_valid is True
+    assert result.core_valid is True
+    assert result.profile_status is ProfileStatus.PASSED
     assert result.profile_name == "test_profile"
     assert result.file_path == "/test/file.json"
     assert len(result.messages) == 0

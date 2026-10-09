@@ -10,7 +10,12 @@ from unittest.mock import Mock, patch
 from click.testing import CliRunner
 
 from sbom_check.cli import main
-from sbom_check.models import SbomCheckResult, ValidationMessage, ValidationSeverity
+from sbom_check.models import (
+    ProfileStatus,
+    SbomCheckResult,
+    ValidationMessage,
+    ValidationSeverity,
+)
 
 
 def test_cli_help():
@@ -231,6 +236,10 @@ def test_cli_validate_with_json_output(mock_engine_class, tmp_path):
     mock_result.overall_valid = True
     mock_result.spdx_valid = True
     mock_result.profile_valid = True
+    mock_result.core_valid = True
+    mock_result.profile_status = ProfileStatus.PASSED
+    mock_result.document_format = "SPDX"
+    mock_result.spec_version = "2.3"
     mock_result.profile_name = "Test Profile"
     mock_result.file_path = "test.json"
     mock_result.messages = []
@@ -736,6 +745,10 @@ def test_cli_multiple_files_json_output(tmp_path):
         mock_result.overall_valid = True
         mock_result.spdx_valid = True
         mock_result.profile_valid = True
+        mock_result.core_valid = True
+        mock_result.profile_status = ProfileStatus.PASSED
+        mock_result.document_format = "SPDX"
+        mock_result.spec_version = "2.3"
         mock_result.profile_name = "Test Profile"
         mock_result.messages = []
         mock_result.summary.errors = 0

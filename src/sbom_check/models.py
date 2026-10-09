@@ -40,6 +40,7 @@ class ValidationMessage(BaseModel):
     message: str
     rule_id: str | None = None
     field_path: str | None = None
+    json_path: str | None = None
     affected_element: str | None = None
     section_reference: str | None = None
     found_value: Any | None = None
@@ -52,6 +53,9 @@ class ValidationMessage(BaseModel):
 
         if self.field_path:
             parts.append(f"Field: {self.field_path}")
+
+        if self.json_path:
+            parts.append(f"JSON path: {self.json_path}")
 
         if self.affected_element:
             parts.append(f"Affected element: {self.affected_element}")
@@ -201,6 +205,7 @@ class SbomCheckResult(BaseModel):
                     field_path=getattr(
                         spdx_msg, "field_path", getattr(spdx_msg, "path", None)
                     ),
+                    json_path=getattr(spdx_msg, "json_path", None),
                     affected_element=getattr(spdx_msg, "affected_element", None),
                     section_reference=getattr(spdx_msg, "section_reference", None),
                     found_value=getattr(spdx_msg, "found_value", None),
@@ -244,6 +249,7 @@ class SbomCheckResult(BaseModel):
         remediation: str | None = None,
         *,
         affected_element: str | None = None,
+        json_path: str | None = None,
     ) -> None:
         """Add a validation message to the result."""
         msg = ValidationMessage(
@@ -251,6 +257,7 @@ class SbomCheckResult(BaseModel):
             message=message,
             rule_id=rule_id,
             field_path=field_path,
+            json_path=json_path,
             affected_element=affected_element,
             section_reference=section_reference,
             found_value=found_value,

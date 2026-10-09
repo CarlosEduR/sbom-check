@@ -75,6 +75,9 @@ def output_text(result: Any, file_path: Path) -> None:
             if msg.field_path:
                 click.echo(f"  Field: {msg.field_path}")
 
+            if msg.json_path:
+                click.echo(f"  JSON path: {msg.json_path}")
+
             if msg.affected_element:
                 click.echo(f"  Affected element: {msg.affected_element}")
 
@@ -123,6 +126,7 @@ def output_json_multiple(results: list[tuple[Path, ValidationResult]]) -> None:
                         "message": message.message,
                         "rule_id": message.rule_id,
                         "field_path": message.field_path,
+                        "json_path": message.json_path,
                         "affected_element": message.affected_element,
                         "section_reference": message.section_reference,
                         "found_value": message.found_value,

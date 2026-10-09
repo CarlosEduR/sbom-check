@@ -59,7 +59,8 @@ class TestSpdx3ValidationIntegration:
         assert len(shacl_messages) == 2
 
         schema_message = schema_messages[0]
-        assert schema_message.field_path == "$['@graph'][2]"
+        assert schema_message.field_path is None
+        assert schema_message.json_path == "$['@graph'][2]"
         assert schema_message.message == (
             "Schema validation error: $['@graph'][2]: Is not valid"
         )

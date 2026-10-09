@@ -120,6 +120,7 @@ class TestValidationEngine:
         schema_message, shacl_message = result.messages
         assert schema_message.rule_id == "json_schema"
         assert schema_message.field_path is None
+        assert schema_message.json_path is None
         assert schema_message.message == (
             "Schema validation error: Document does not conform to the SPDX schema"
         )

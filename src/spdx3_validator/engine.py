@@ -94,16 +94,18 @@ class ValidationEngine(ValidatorEngine):
                     semantic_valid=semantic_valid,
                 )
 
-            errors = self._unique_errors(result.errors)
-            schema_errors = [error for error in errors if error.kind == "schema"]
-            for error in schema_errors:
+            schema_errors = [
+                error for error in result.errors if error.kind == "schema"
+            ]
+            for error in self._unique_errors(schema_errors):
                 schema_valid = False
                 all_messages.append(
                     ValidationMessage(
                         severity=ValidationSeverity.ERROR,
                         message=f"Schema validation error: {error.message}",
                         rule_id="json_schema",
-                        field_path=(
+                        field_path=None,
+                        json_path=(
                             error.message.split(":", 1)[0]
                             if error.message.startswith("$")
                             else None
@@ -111,7 +113,7 @@ class ValidationEngine(ValidatorEngine):
                     )
                 )
 
-            shacl_errors = [error for error in errors if error.kind == "shacl"]
+            shacl_errors = [error for error in result.errors if error.kind == "shacl"]
             for error in shacl_errors:
                 semantic_valid = False
                 shacl_error = ShaclDiagnosticParser.parse_shacl_error(error.message)

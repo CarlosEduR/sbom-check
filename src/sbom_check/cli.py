@@ -153,6 +153,7 @@ def output_json_multiple(results: list[tuple[Path, Any]]) -> None:
                         "message": msg.message,
                         "rule_id": msg.rule_id,
                         "field_path": msg.field_path,
+                        "json_path": msg.json_path,
                         "affected_element": msg.affected_element,
                         "section_reference": msg.section_reference,
                         "found_value": msg.found_value,
@@ -477,6 +478,9 @@ def _print_message(msg: Any, color: str) -> None:
     if msg.field_path:
         console.print(f"    Field: {msg.field_path}")
 
+    if msg.json_path:
+        console.print(f"    JSON path: {msg.json_path}")
+
     if msg.affected_element:
         console.print(f"    Affected element: {msg.affected_element}")
 
@@ -520,6 +524,7 @@ def _print_json_result(result: Any) -> None:
                 "message": msg.message,
                 "rule_id": msg.rule_id,
                 "field_path": msg.field_path,
+                "json_path": msg.json_path,
                 "affected_element": msg.affected_element,
                 "section_reference": msg.section_reference,
                 "found_value": msg.found_value,

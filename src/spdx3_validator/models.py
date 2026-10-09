@@ -24,6 +24,7 @@ class ValidationMessage:
     message: str
     rule_id: str | None = None
     field_path: str | None = None
+    json_path: str | None = None
     affected_element: str | None = None
     section_reference: str | None = None
     found_value: Any | None = None

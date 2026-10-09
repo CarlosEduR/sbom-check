@@ -20,6 +20,7 @@ def test_validation_message_creation():
         message="Test error message",
         rule_id="test_rule",
         field_path="test.field",
+        json_path="$['test']['field']",
         section_reference="Test Section",
         found_value="wrong",
         expected_value="correct",
@@ -30,6 +31,7 @@ def test_validation_message_creation():
     assert msg.message == "Test error message"
     assert msg.rule_id == "test_rule"
     assert msg.field_path == "test.field"
+    assert msg.json_path == "$['test']['field']"
     assert msg.section_reference == "Test Section"
     assert msg.found_value == "wrong"
     assert msg.expected_value == "correct"
@@ -42,6 +44,7 @@ def test_validation_message_str():
         severity=ValidationSeverity.WARNING,
         message="Test warning",
         field_path="test.field",
+        json_path="$['test']['field']",
         found_value="actual",
         expected_value="expected",
     )
@@ -49,6 +52,7 @@ def test_validation_message_str():
     str_repr = str(msg)
     assert "WARNING: Test warning" in str_repr
     assert "Field: test.field" in str_repr
+    assert "JSON path: $['test']['field']" in str_repr
     assert "Found: actual" in str_repr
     assert "Expected: expected" in str_repr
 
@@ -60,6 +64,7 @@ def test_convert_spdx_messages_preserves_diagnostics():
         message="Invalid reference",
         rule_id="spdx3-reference",
         field_path="creationInfo",
+        json_path="$['@graph'][0]['creationInfo']",
         affected_element="https://example.com/package",
         section_reference="SPDX 3.0.1 SHACL validation",
         found_value="_:CreationInfo2",
@@ -71,6 +76,7 @@ def test_convert_spdx_messages_preserves_diagnostics():
     [message] = SbomCheckResult._convert_spdx_messages(core_result)
 
     assert message.affected_element == raw_message.affected_element
+    assert message.json_path == raw_message.json_path
     assert message.section_reference == raw_message.section_reference
     assert message.found_value == raw_message.found_value
     assert message.expected_value == raw_message.expected_value

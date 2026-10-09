@@ -11,7 +11,7 @@ A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents.
 ## Features
 
 - **Multi-format validation**: Automatic detection and validation of SPDX 2.3 and SPDX 3.0.1 documents
-- **CLI Tools**: Both `sbom-check` and `spdx-validate` commands available
+- **CLI Tools**: `sbom-check`, `spdx-validate`, and `sbom-spdx3-validate` commands available
 - **Configurable Requirements**: YAML-based configuration system with inheritance
 - **Multiple Profiles**: Built-in profiles for different use cases (basic, default, automotive, etc.)
 - **Rich Reporting**: Text and JSON output formats with detailed error messages
@@ -101,6 +101,11 @@ uv run sbom-check my-sbom.spdx.json
 SPDX-Validate: Core SPDX 2.3 specification validation
 ```bash
 uv run spdx-validate my-sbom.spdx.json
+```
+
+SPDX 3.0.1 validation with batch processing:
+```bash
+uv run sbom-spdx3-validate my-sbom.spdx.json
 ```
 
 Validate multiple files:
@@ -296,7 +301,7 @@ fi
 
 ## CLI Tools
 
-This project provides two complementary CLI tools:
+This project provides three complementary CLI tools:
 
 ### sbom-check
 Comprehensive SBOM validation with configurable requirements and profiles.
@@ -334,6 +339,29 @@ Options:
   -j, --jobs INTEGER           Number of parallel jobs for validation
   --help                       Show this message and exit.
 ```
+
+### sbom-spdx3-validate
+Project CLI for SPDX 3.0.1 validation. It adds recursive file discovery, batch
+processing, parallel jobs, normalized text or JSON output, and project-specific
+diagnostics, including parsing upstream SHACL errors into more human-readable
+messages, around the upstream SPDX 3 validator.
+
+```
+Usage: sbom-spdx3-validate [OPTIONS] PATHS...
+
+Options:
+  --output-format [text|json]  Output format for validation results
+  -r, --recursive              Recursively scan directories for SPDX files
+  --pattern TEXT               File pattern to match when scanning directories
+  -j, --jobs INTEGER           Number of parallel jobs for validation
+  --help                       Show this message and exit.
+```
+
+The `spdx3-validate` command is provided by the upstream `spdx3-validate`
+dependency. It offers the dependency's native single-document interface,
+including URL or standard-input support and SPDX version selection. Use
+`sbom-spdx3-validate` when you need this project's batch-oriented CLI and
+output format.
 
 ## Contributing
 

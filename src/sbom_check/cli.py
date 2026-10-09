@@ -32,6 +32,13 @@ from spdx3_validator.models import REMOTE_RESOURCE_UNAVAILABLE_RULE_ID
 console = Console()
 REMOTE_RESOURCE_FAILURE_EXIT_CODE = 4
 
+# User-facing names for document format enum values.  SPDX3 is an internal
+# identifier; the CLI should use the standard SPDX name in its output.
+FORMAT_DISPLAY_NAMES = {
+    "SPDX": "SPDX",
+    "SPDX3": "SPDX",
+}
+
 
 def collect_sbom_files(
     paths: tuple[Path, ...], recursive: bool, pattern: str
@@ -239,7 +246,7 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
     generate_config: bool,
     validate_config: str | None,
 ) -> None:
-    """Validate SPDX JSON SBOM documents.
+    """Validate SPDX SBOM documents, with configurable requirements for SPDX 2.3.
 
     PATHS can be individual files or directories. When directories are provided,
     they will be scanned for SBOM files matching the specified pattern.
@@ -403,7 +410,8 @@ def _validate_config_file(loader: ConfigLoader, config_path: str) -> None:
 def _print_text_result(result: Any, file_path: str) -> None:
     """Print validation result in text format."""
     console.print(f"\n[bold]Validation Results for: {file_path}[/bold]")
-    console.print(f"Profile: {result.profile_name or 'Unknown'}")
+    if result.profile_status is not ProfileStatus.NOT_APPLICABLE:
+        console.print(f"Profile: {result.profile_name or 'Unknown'}")
 
     # Overall status
     if result.overall_valid:
@@ -413,6 +421,7 @@ def _print_text_result(result: Any, file_path: str) -> None:
 
     format_name = getattr(result, "document_format", "SPDX")
     format_name = getattr(format_name, "value", format_name)
+    format_name = FORMAT_DISPLAY_NAMES.get(format_name, format_name)
     specification = f" {result.spec_version}" if result.spec_version else ""
     core_label = f"{format_name}{specification} Validation"
     if result.core_valid:

@@ -24,7 +24,10 @@ def test_cli_help():
     result = runner.invoke(main, ["--help"])
 
     assert result.exit_code == 0
-    assert "Validate SPDX JSON SBOM documents" in result.output
+    assert (
+        "Validate SPDX SBOM documents, with configurable requirements for SPDX 2.3."
+        in result.output
+    )
     assert "--profile" in result.output
     assert "--config" in result.output
     assert "--output-format" in result.output
@@ -179,6 +182,30 @@ def test_cli_remote_resource_failure_has_distinct_exit_code(tmp_path):
         cli_result = runner.invoke(main, [str(document)])
 
     assert cli_result.exit_code == 4
+
+
+@patch("sbom_check.cli.SbomCheckEngine")
+def test_cli_uses_spdx_display_name_for_spdx3(mock_engine_class, tmp_path):
+    """Use the standard SPDX name instead of the internal SPDX3 enum value."""
+    mock_result = Mock()
+    mock_result.profile_name = None
+    mock_result.overall_valid = True
+    mock_result.core_valid = True
+    mock_result.profile_status = ProfileStatus.NOT_APPLICABLE
+    mock_result.document_format = "SPDX3"
+    mock_result.spec_version = "3.0.1"
+    mock_result.messages = []
+
+    mock_engine_class.return_value.validate_file.return_value = mock_result
+
+    test_file = tmp_path / "test.json"
+    test_file.write_text("{}")
+
+    result = CliRunner().invoke(main, [str(test_file)])
+
+    assert result.exit_code == 0
+    assert "SPDX 3.0.1 Validation: PASSED" in result.output
+    assert "Profile: " not in result.output
 
 
 @patch("sbom_check.cli.SbomCheckEngine")

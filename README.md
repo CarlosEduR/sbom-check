@@ -45,7 +45,10 @@ not itself a profile failure.
 ### Operational notes
 
 - Validation requires outbound access to SPDX-hosted contexts, schemas, and SHACL resources.
-- Resource failures return an error with rule ID `spdx3_remote_resource_unavailable`; they are not SBOM content or semantic failures.
+- Resource failures return an error with rule ID
+  `spdx3_remote_resource_unavailable`. They set `is_valid` to `false`, but leave
+  `schema_valid` and `semantic_valid` as `null` because those checks were not
+  evaluated. They are not SBOM content or semantic failures.
 - Each input file is validated independently; merged or cross-document validation is not supported.
 
 ## Quick Start

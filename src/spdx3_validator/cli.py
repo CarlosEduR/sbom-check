@@ -166,7 +166,7 @@ def output_json_multiple(results: list[tuple[Path, ValidationResult]]) -> None:
 @click.option(
     "--jobs",
     "-j",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     help="Number of parallel jobs for validation (default: number of CPU cores)",
 )

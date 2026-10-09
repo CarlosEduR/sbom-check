@@ -15,6 +15,17 @@ from spdx3_validator.models import (
 )
 
 
+def test_jobs_must_be_positive(tmp_path):
+    """Reject zero jobs before creating a process pool."""
+    document = tmp_path / "document.spdx.json"
+    document.write_text("{}", encoding="utf-8")
+
+    result = CliRunner().invoke(main, ["--jobs", "0", str(document)])
+
+    assert result.exit_code == 2
+    assert "Invalid value for '--jobs'" in result.output
+
+
 def test_remote_resource_failure_has_distinct_exit_code(tmp_path):
     """Use a distinct exit code when SPDX resources are unavailable."""
     document = tmp_path / "document.spdx.json"

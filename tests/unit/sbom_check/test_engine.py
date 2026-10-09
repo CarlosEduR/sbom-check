@@ -124,6 +124,22 @@ def test_validate_dict(mock_validation_engine):
     assert result.file_path == "test.json"
 
 
+def test_validate_dict_rejects_non_object_with_explicit_validator():
+    """Return a structured error when an explicit validator receives non-object JSON."""
+    engine = SbomCheckEngine(validator_class=SPDX3ValidationEngine)
+
+    result = engine.validate_dict([])  # type: ignore[arg-type]
+
+    assert result.overall_valid is False
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert len(result.messages) == 1
+    assert result.messages[0].rule_id == "unsupported_format"
+    assert result.messages[0].message == (
+        "Unsupported input: the JSON document must be a top-level object"
+    )
+
+
 def test_validate_file_not_found():
     """Test validation with non-existent file."""
     engine = SbomCheckEngine()

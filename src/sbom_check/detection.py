@@ -115,13 +115,17 @@ def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
 
 
 def get_document_version(
-    document_format: DocumentFormat, data: dict[str, Any]
+    document_format: DocumentFormat, data: Any
 ) -> str | None:
+    if not isinstance(data, dict):
+        raise UnsupportedDocumentError(
+            "Unsupported input: the JSON document must be a top-level object"
+        )
+
     version_detector = {
         DocumentFormat.SPDX: _detect_spdx_version,
         DocumentFormat.SPDX3: _detect_spdx3_version,
     }
-
     return version_detector[document_format](data)
 
 

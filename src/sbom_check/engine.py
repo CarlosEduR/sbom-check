@@ -173,19 +173,20 @@ class SbomCheckEngine:
         selected_engine = None
         document_format: DocumentFormat = DocumentFormat.UNKNOWN
         spec_version = None
-        if self.engine is None:
-            try:
-                detected = detect_document(spdx_data)
-            except UnsupportedDocumentError as error:
-                return self._unsupported_result(error, file_path=file_path)
 
-            selected_engine = detected.validator_class()
-            document_format = detected.format
-            spec_version = detected.spec_version
-        else:
-            selected_engine = self.engine
-            document_format = selected_engine.format
-            spec_version = get_document_version(document_format, spdx_data)
+        try:
+            if self.engine is None:
+                detected = detect_document(spdx_data)
+
+                selected_engine = detected.validator_class()
+                document_format = detected.format
+                spec_version = detected.spec_version
+            else:
+                selected_engine = self.engine
+                document_format = selected_engine.format
+                spec_version = get_document_version(document_format, spdx_data)
+        except UnsupportedDocumentError as error:
+            return self._unsupported_result(error, file_path=file_path)
 
         profile_applicable = document_format is DocumentFormat.SPDX
 

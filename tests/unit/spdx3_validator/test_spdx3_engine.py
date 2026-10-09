@@ -116,6 +116,23 @@ class TestValidationEngine:
         mock_validate.assert_not_called()
 
     @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_rejects_unsupported_context_format(
+        self, mock_validate: Mock
+    ):
+        """Reject an SPDX document whose context is not a string."""
+        result = ValidationEngine().validate_dict({"@context": {"spdx": "3.0.1"}})
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "spdx3_unsupported_context_format"
+        assert result.messages[0].message == (
+            "Unsupported @context format: expected a string."
+        )
+        mock_validate.assert_not_called()
+
+    @patch("spdx3_validator.engine.validate")
     def test_validate_dict_unknown_version(self, mock_validate: Mock):
         """Test handling of an unsupported SPDX context version."""
         mock_validate.side_effect = UnknownVersionError(

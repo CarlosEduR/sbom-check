@@ -317,6 +317,20 @@ class ValidationEngine(ValidatorEngine):
                 semantic_valid=False,
             )
 
+        if not isinstance(spdx_data["@context"], str):
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message="Unsupported @context format: expected a string.",
+                        rule_id="spdx3_unsupported_context_format",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
         return self._validate(spdx_data)
 
     def validate_file(self, file_path: str | Path) -> ValidationResult:

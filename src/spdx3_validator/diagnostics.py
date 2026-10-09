@@ -31,6 +31,37 @@ def _property_label(field_name: str | None) -> str:
     return f"'{field_name}'" if field_name else "this property"
 
 
+def _constraint_rule_id(constraint_name: str) -> str:
+    """Build the consistent rule ID used for an unhandled SHACL constraint."""
+    name = re.sub(r"ConstraintComponent$", "", constraint_name)
+    snake_case_name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+    return f"spdx3_shacl_{snake_case_name}_constraint"
+
+
+_NODE_KIND_DESCRIPTIONS = {
+    "IRI": "an IRI identifier",
+    "Literal": "a literal value",
+    "BlankNode": "an anonymous blank node",
+    "BlankNodeOrIRI": "a blank node or an IRI identifier",
+    "BlankNodeOrLiteral": "a blank node or a literal value",
+    "IRIOrLiteral": "an IRI identifier or a literal value",
+}
+
+
+def _node_kind(error_text: str) -> str:
+    """Return the local name of the node kind declared by the source shape."""
+    if not (value := _shape_value(error_text, "nodeKind")):
+        # NodeKindConstraintComponent reports include this triple in their
+        # source shape. Keep the old fallback for malformed/incomplete output.
+        return "IRI"
+    return value.split()[0].rstrip(".").removeprefix("sh:")
+
+
+# spdx3-validate 0.0.7 exposes check_graph() findings as human-readable
+# strings rather than structured SHACL results. This parser intentionally
+# mirrors that format. See the upstream implementation:
+# https://github.com/JPEWdev/spdx3-validate/blob/v0.0.7/spdx3_validate/core.py
+# Keep the dependency pinned until structured results are available upstream.
 class ShaclDiagnosticParser:
     """Parse spdx3-validate SHACL output into vendor-facing messages."""
 
@@ -56,6 +87,7 @@ class ShaclDiagnosticParser:
         value_node = _match_value(value)
         path = _match_value(result_path)
         expected = _local_name(expected_class.group(1)) if expected_class else None
+        raw_message = error_text.strip()
 
         # A SHACL result path of '-' means that the violation is on the node,
         # rather than on a property.  _local_name deliberately maps it to None.
@@ -173,28 +205,42 @@ class ShaclDiagnosticParser:
             )
 
         if constraint_name == "NodeKindConstraintComponent":
+            expected_value = _node_kind(error_text)
+            expected_description = _NODE_KIND_DESCRIPTIONS.get(
+                expected_value, f"a value of node kind {expected_value}"
+            )
+            remediation = (
+                "Add a unique spdxId to the SPDX element and ensure references "
+                "use that identifier."
+                if expected_value == "IRI"
+                else f"Provide a value that is {expected_description}."
+            )
             return ValidationMessage(
                 severity=ValidationSeverity.ERROR,
-                message=(
-                    "An SPDX element is represented as an anonymous blank node, "
-                    "but this element must have an IRI identifier."
-                ),
+                message=(f"The {property_label} value must be {expected_description}."),
                 rule_id="spdx3_shacl_node_kind_constraint",
                 field_path=field_name,
                 section_reference=SHACL_SECTION_REFERENCE,
                 affected_element=focus_node,
                 found_value=value_node,
-                expected_value="IRI",
-                remediation=(
-                    "Add a unique spdxId to the SPDX element and ensure references "
-                    "use that identifier."
-                ),
+                expected_value=expected_value,
+                remediation=remediation,
             )
+
+        if constraint is None:
+            # check_graph also emits plain errors (for example, when an
+            # ExternalMap ID is defined in the same document). Those errors do
+            # not have a SHACL result header or Message field, so retain the
+            # complete upstream text instead of replacing it with a generic
+            # placeholder.
+            fallback_message = raw_message or "SHACL validation failed"
+        else:
+            fallback_message = f"SPDX 3.0.1 constraint violation: {detail_text}"
 
         return ValidationMessage(
             severity=ValidationSeverity.ERROR,
-            message=f"SPDX 3.0.1 constraint violation: {detail_text}",
-            rule_id=f"spdx3_shacl_{constraint_name.lower()}",
+            message=fallback_message,
+            rule_id=_constraint_rule_id(constraint_name),
             field_path=field_name,
             section_reference=SHACL_SECTION_REFERENCE,
             affected_element=focus_node,

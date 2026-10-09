@@ -115,6 +115,57 @@ class TestShaclDiagnosticParser:
         assert message.message == "The 'name' value must have datatype xsd:string."
         assert message.remediation == "Provide a value with datatype xsd:string."
 
+    def test_parser_translates_node_kind_from_source_shape(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
+        """Use the source shape's node kind in the translated diagnostic."""
+        document = minimal_spdx3_document
+        package = next(
+            node
+            for node in document["@graph"]
+            if node.get("type") == "software_Package"
+        )
+        package["software_packageVersion"] = {"@id": "https://example.com/version"}
+
+        messages = _shacl_messages(
+            document, tmp_path / "node-kind-diagnostic.spdx.json"
+        )
+
+        message = next(
+            message
+            for message in messages
+            if message.rule_id == "spdx3_shacl_node_kind_constraint"
+        )
+        assert message.field_path == "packageVersion"
+        assert message.expected_value == "Literal"
+        assert message.message == "The 'packageVersion' value must be a literal value."
+        assert message.remediation == "Provide a value that is a literal value."
+
+    def test_parser_preserves_unstructured_shacl_error(self):
+        """Retain check_graph errors that do not have a SHACL result header."""
+        raw_message = (
+            "ERROR: https://example.com/imported in an ExternalMap and also "
+            "defined in the document"
+        )
+
+        message = ShaclDiagnosticParser.parse_shacl_error(raw_message)
+
+        assert message.message == raw_message
+        assert message.rule_id == "spdx3_shacl_generic_violation_constraint"
+        assert message.field_path is None
+        assert message.affected_element is None
+
+    def test_parser_normalizes_unhandled_constraint_rule_id(self):
+        """Convert an unhandled SHACL component name to the standard rule ID."""
+        error_text = """\
+            Violation of type sh:QualifiedValueShapeConstraintComponent:
+            \tMessage: Value does not conform to the qualified value shape
+            """
+
+        message = ShaclDiagnosticParser.parse_shacl_error(error_text)
+
+        assert message.rule_id == "spdx3_shacl_qualified_value_shape_constraint"
+
     def test_parser_translates_repeated_class_constraints(
         self, tmp_path: Path, minimal_spdx3_document: dict
     ):

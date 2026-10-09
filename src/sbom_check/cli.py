@@ -27,8 +27,10 @@ except ImportError:
 from sbom_check.config.loader import ConfigLoader
 from sbom_check.engine import SbomCheckEngine
 from sbom_check.models import ProfileStatus, ValidationSeverity
+from spdx3_validator.models import REMOTE_RESOURCE_UNAVAILABLE_RULE_ID
 
 console = Console()
+REMOTE_RESOURCE_FAILURE_EXIT_CODE = 4
 
 
 def collect_sbom_files(
@@ -82,6 +84,14 @@ def _ensure_result_document_metadata(result: Any) -> None:
     spec_version = getattr(result, "spec_version", None)
     if spec_version is not None and not isinstance(spec_version, str):
         result.spec_version = None
+
+
+def _has_remote_resource_failure(result: Any) -> bool:
+    """Return whether validation could not run because a remote resource failed."""
+    return any(
+        getattr(message, "rule_id", None) == REMOTE_RESOURCE_UNAVAILABLE_RULE_ID
+        for message in getattr(result, "messages", [])
+    )
 
 
 def output_text_multiple(results: list[tuple[Path, Any]]) -> None:
@@ -277,6 +287,7 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
         # Validate all files (in parallel if multiple files)
         results = []
         overall_valid = True
+        remote_resource_failure = False
 
         if len(files_to_validate) == 1:
             # Single file - no need for parallel processing
@@ -296,6 +307,7 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
 
             if not result.overall_valid:
                 overall_valid = False
+            remote_resource_failure = _has_remote_resource_failure(result)
         else:
             # Multiple files - use parallel processing
             with ProcessPoolExecutor(max_workers=jobs) as executor:
@@ -316,6 +328,8 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
                     results.append((file_path, result))
                     if not result.overall_valid:
                         overall_valid = False
+                    if _has_remote_resource_failure(result):
+                        remote_resource_failure = True
 
             # Sort results by file path for consistent output
             results.sort(key=lambda x: x[0])
@@ -334,7 +348,10 @@ def main(  # pylint: disable=too-many-positional-arguments,too-many-locals,too-m
         elif output_format == "json":
             output_json_multiple(results)
 
-        # Exit with appropriate code
+        # A remote-resource failure means validation was incomplete. Give it a
+        # distinct status, including when a batch also contains invalid documents.
+        if remote_resource_failure:
+            sys.exit(REMOTE_RESOURCE_FAILURE_EXIT_CODE)
         sys.exit(0 if overall_valid else 1)
 
     except Exception as e:

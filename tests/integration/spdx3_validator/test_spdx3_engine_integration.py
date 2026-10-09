@@ -94,8 +94,8 @@ class TestSpdx3ValidationIntegration:
         result = ValidationEngine().validate_file(MINIMAL_DOCUMENT)
 
         assert result.is_valid is False
-        assert result.schema_valid is True
-        assert result.semantic_valid is True
+        assert result.schema_valid is None
+        assert result.semantic_valid is None
         assert len(result.messages) == 1
         assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
         assert "required remote resource was unavailable" in result.messages[0].message

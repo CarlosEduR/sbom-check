@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 from click.testing import CliRunner
 
 from sbom_check.cli import main
+from sbom_check.models import SbomCheckResult, ValidationMessage, ValidationSeverity
 
 
 def test_cli_help():
@@ -147,6 +148,32 @@ def test_cli_validate_file_not_found():
     assert (
         result.exit_code == 2
     )  # Click returns 2 for invalid arguments (file not found)
+
+
+def test_cli_remote_resource_failure_has_distinct_exit_code(tmp_path):
+    """Use a distinct exit code when SPDX 3 resources are unavailable."""
+    runner = CliRunner()
+    document = tmp_path / "document.spdx.json"
+    document.write_text("{}")
+    result = SbomCheckResult(
+        overall_valid=False,
+        spdx_valid=None,
+        profile_valid=None,
+        core_valid=False,
+        messages=[
+            ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message="remote resource unavailable",
+                rule_id="spdx3_remote_resource_unavailable",
+            )
+        ],
+    )
+
+    with patch("sbom_check.cli.SbomCheckEngine") as engine_class:
+        engine_class.return_value.validate_file.return_value = result
+        cli_result = runner.invoke(main, [str(document)])
+
+    assert cli_result.exit_code == 4
 
 
 @patch("sbom_check.cli.SbomCheckEngine")

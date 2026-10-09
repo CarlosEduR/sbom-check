@@ -4,12 +4,15 @@
 """SPDX 3.0.1 validation engine."""
 
 import json
+from http.client import HTTPException
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 from urllib.error import URLError
 
+from rdflib.exceptions import ParserError
+from rdflib.plugins.parsers.notation3 import BadSyntax
 from spdx3_validate import validate
 from spdx3_validate.core import SpdxValidateError, UnknownVersionError
 from spdx3_validate.core import ValidationError as CustomValidationError
@@ -19,6 +22,7 @@ from sbom_validator.engine import ValidatorEngine
 from sbom_validator.models import DocumentFormat
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
 from spdx3_validator.models import (
+    REMOTE_RESOURCE_UNAVAILABLE_RULE_ID,
     ValidationMessage,
     ValidationResult,
     ValidationSeverity,
@@ -170,7 +174,12 @@ class ValidationEngine(ValidatorEngine):
                 schema_valid=False,
                 semantic_valid=False,
             )
-        except (URLError, TimeoutError, ConnectionError) as e:
+        except (
+            HTTPException,
+            URLError,
+            TimeoutError,
+            ConnectionError,
+        ) as e:
             return ValidationResult(
                 is_valid=False,
                 messages=[
@@ -180,7 +189,7 @@ class ValidationEngine(ValidatorEngine):
                             "SPDX validation could not be completed because a "
                             f"required remote resource was unavailable: {e}"
                         ),
-                        rule_id="spdx3_remote_resource_unavailable",
+                        rule_id=REMOTE_RESOURCE_UNAVAILABLE_RULE_ID,
                         remediation=(
                             "Make the required SPDX validation resources available "
                             "and run validation again."
@@ -188,9 +197,29 @@ class ValidationEngine(ValidatorEngine):
                     )
                 ],
                 # Resource availability is neither a schema nor a semantic
-                # failure in the submitted SBOM.
-                schema_valid=True,
-                semantic_valid=True,
+                # failure in the submitted SBOM. Neither check was evaluated.
+                schema_valid=None,
+                semantic_valid=None,
+            )
+        except (ParserError, BadSyntax) as e:
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=(
+                            "SPDX validation could not be completed because an "
+                            f"RDF document could not be parsed: {e}"
+                        ),
+                        rule_id="spdx3_validation_parse_error",
+                        remediation=(
+                            "Check the SBOM and required SPDX validation resources "
+                            "and run validation again."
+                        ),
+                    )
+                ],
+                schema_valid=None,
+                semantic_valid=None,
             )
         except JSONDecodeError as e:
             return ValidationResult(

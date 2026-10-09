@@ -193,6 +193,7 @@ SBOM-Check includes an integrated spdx-validator library that provides:
 - **1**: Validation errors found
 - **2**: Configuration or input file errors
 - **3**: Internal application errors
+- **4**: Validation could not run because a required remote SPDX resource was unavailable
 
 ## Examples
 

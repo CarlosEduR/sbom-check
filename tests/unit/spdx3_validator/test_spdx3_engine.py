@@ -4,9 +4,12 @@
 """Unit tests for the SPDX 3 validation engine."""
 
 import json
+from http.client import IncompleteRead
 from pathlib import Path
 from unittest.mock import Mock, patch
+from urllib.error import URLError
 
+from rdflib.exceptions import ParserError
 from spdx3_validate.core import UnknownVersionError
 from spdx3_validate.core import (
     ValidationError as CustomValidationError,
@@ -35,6 +38,52 @@ class TestValidationEngine:
         assert result.messages == []
         mock_validate.assert_called_once()
         assert mock_validate.call_args.kwargs["version"] == "3.0.1"
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_remote_resource_failure_marks_checks_unevaluated(
+        self, mock_validate: Mock
+    ):
+        """Mark checks as unevaluated when a required remote resource is unavailable."""
+        mock_validate.side_effect = URLError("network disabled")
+
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
+        )
+
+        assert result.is_valid is False
+        assert result.schema_valid is None
+        assert result.semantic_valid is None
+        assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_http_protocol_failure_is_remote_resource_failure(
+        self, mock_validate: Mock
+    ):
+        """Convert HTTP protocol failures into remote-resource failures."""
+        mock_validate.side_effect = IncompleteRead(b"partial")
+
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
+        )
+
+        assert result.is_valid is False
+        assert result.schema_valid is None
+        assert result.semantic_valid is None
+        assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_parser_failure_is_structured(self, mock_validate: Mock):
+        """Convert ambiguous RDF parser failures without calling them remote errors."""
+        mock_validate.side_effect = ParserError("truncated RDF document")
+
+        result = ValidationEngine().validate_dict(
+            {"@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld"}
+        )
+
+        assert result.is_valid is False
+        assert result.schema_valid is None
+        assert result.semantic_valid is None
+        assert result.messages[0].rule_id == "spdx3_validation_parse_error"
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_dict_rejects_non_object(self, mock_validate: Mock):

@@ -12,7 +12,21 @@ from typing import Any
 import click
 
 from spdx3_validator.engine import ValidationEngine
-from spdx3_validator.models import ValidationResult, ValidationSeverity
+from spdx3_validator.models import (
+    REMOTE_RESOURCE_UNAVAILABLE_RULE_ID,
+    ValidationResult,
+    ValidationSeverity,
+)
+
+REMOTE_RESOURCE_FAILURE_EXIT_CODE = 4
+
+
+def _has_remote_resource_failure(result: ValidationResult) -> bool:
+    """Return whether validation could not run because a remote resource failed."""
+    return any(
+        message.rule_id == REMOTE_RESOURCE_UNAVAILABLE_RULE_ID
+        for message in result.messages
+    )
 
 
 def collect_spdx_files(
@@ -220,6 +234,7 @@ def main(
         sys.exit(1)
 
     overall_valid = True
+    remote_resource_failure = False
     results = []
 
     if len(files_to_validate) == 1:
@@ -229,6 +244,7 @@ def main(
         results.append((file_path, result))
         if not result.is_valid:
             overall_valid = False
+        remote_resource_failure = _has_remote_resource_failure(result)
     else:
         # Multiple files - use parallel processing
         with ProcessPoolExecutor(max_workers=jobs) as executor:
@@ -244,6 +260,8 @@ def main(
                 results.append((file_path, result))
                 if not result.is_valid:
                     overall_valid = False
+                if _has_remote_resource_failure(result):
+                    remote_resource_failure = True
 
         # Sort results by file path for consistent output
         results.sort(key=lambda x: x[0])
@@ -254,5 +272,8 @@ def main(
     else:
         output_text_multiple(results)
 
-    # Exit with appropriate code
+    # A remote-resource failure means validation was incomplete. Give it a
+    # distinct status, including when a batch also contains invalid documents.
+    if remote_resource_failure:
+        sys.exit(REMOTE_RESOURCE_FAILURE_EXIT_CODE)
     sys.exit(0 if overall_valid else 1)

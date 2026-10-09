@@ -11,8 +11,6 @@ from spdx3_validate import validate
 
 from spdx3_validator.diagnostics import ShaclDiagnosticParser
 
-FIXTURE = Path(__file__).parent.parent / "fixtures" / "minimal-spdx3.0.1.spdx.json"
-
 
 def _shacl_messages(document: dict, path: Path) -> list:
     """Validate a document and translate only its SHACL errors."""
@@ -29,9 +27,11 @@ def _shacl_messages(document: dict, path: Path) -> list:
 class TestShaclDiagnosticParser:
     """Integration tests for SHACL diagnostic translation."""
 
-    def test_parser_translates_mincount_constraint(self, tmp_path: Path):
+    def test_parser_translates_mincount_constraint(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
         """Translate a missing required property."""
-        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document = minimal_spdx3_document
         document["@graph"][1].pop("createdBy")
 
         messages = _shacl_messages(document, tmp_path / "mincount-diagnostic.spdx.json")
@@ -48,9 +48,11 @@ class TestShaclDiagnosticParser:
         )
         assert message.remediation == "Provide at least 1 value(s)."
 
-    def test_parser_translates_maxcount_constraint(self, tmp_path: Path):
+    def test_parser_translates_maxcount_constraint(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
         """Translate a property with too many values."""
-        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document = minimal_spdx3_document
         document["@graph"][2]["name"] = ["a", "b"]
 
         messages = _shacl_messages(document, tmp_path / "maxcount-diagnostic.spdx.json")
@@ -67,9 +69,11 @@ class TestShaclDiagnosticParser:
         )
         assert message.remediation == "Provide at most 1 value(s)."
 
-    def test_parser_translates_pattern_constraint(self, tmp_path: Path):
+    def test_parser_translates_pattern_constraint(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
         """Translate a value that does not match a required pattern."""
-        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document = minimal_spdx3_document
         document["@graph"][1]["created"] = "not-a-date"
 
         messages = _shacl_messages(document, tmp_path / "pattern-diagnostic.spdx.json")
@@ -90,9 +94,11 @@ class TestShaclDiagnosticParser:
             "Provide a value that matches the required SPDX format."
         )
 
-    def test_parser_translates_datatype_constraint(self, tmp_path: Path):
+    def test_parser_translates_datatype_constraint(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
         """Translate a value with an invalid datatype."""
-        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document = minimal_spdx3_document
         document["@graph"][2]["name"] = 123
 
         messages = _shacl_messages(document, tmp_path / "datatype-diagnostic.spdx.json")
@@ -109,9 +115,11 @@ class TestShaclDiagnosticParser:
         assert message.message == "The 'name' value must have datatype xsd:string."
         assert message.remediation == "Provide a value with datatype xsd:string."
 
-    def test_parser_translates_repeated_class_constraints(self, tmp_path: Path):
+    def test_parser_translates_repeated_class_constraints(
+        self, tmp_path: Path, minimal_spdx3_document: dict
+    ):
         """Preserve the current specialized translation for repeated class errors."""
-        document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        document = minimal_spdx3_document
         document["@graph"][2]["type"] = "NotAnAgent"
 
         messages = _shacl_messages(document, tmp_path / "class-diagnostic.spdx.json")

@@ -16,7 +16,7 @@ class ValidationSeverity(str, Enum):
     INFO = "INFO"
 
 
-REMOTE_RESOURCE_UNAVAILABLE_RULE_ID = "spdx3_remote_resource_unavailable"
+REMOTE_RESOURCE_UNAVAILABLE_RULE_ID = "remote_resource_unavailable"
 
 
 @dataclass

@@ -172,7 +172,7 @@ def test_cli_remote_resource_failure_has_distinct_exit_code(tmp_path):
             ValidationMessage(
                 severity=ValidationSeverity.ERROR,
                 message="remote resource unavailable",
-                rule_id="spdx3_remote_resource_unavailable",
+                rule_id="remote_resource_unavailable",
             )
         ],
     )

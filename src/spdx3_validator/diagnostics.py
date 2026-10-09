@@ -62,8 +62,9 @@ class ShaclDiagnosticParser:
         field_name = _local_name(path)
         detail_text = detail.group(1).strip() if detail else "SHACL validation failed"
 
+        property_label = _property_label(field_name)
+
         if constraint_name == "ClassConstraintComponent" and expected:
-            property_label = _property_label(field_name)
             return ValidationMessage(
                 severity=ValidationSeverity.ERROR,
                 message=(
@@ -81,8 +82,6 @@ class ShaclDiagnosticParser:
                     "the referenced element has the required type."
                 ),
             )
-
-        property_label = _property_label(field_name)
 
         if constraint_name == "MinCountConstraintComponent":
             minimum = _shape_value(error_text, "minCount")

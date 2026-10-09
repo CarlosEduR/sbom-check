@@ -46,7 +46,7 @@ def test_reject_non_object_json(value: object) -> None:
         detect_document(value)
 
 
-def test_detect_unsupported_spdx_version_for_validator() -> None:
+def test_detect_spdx_version_dispatches_to_spdx_validator() -> None:
     detected = detect_document({"spdxVersion": "SPDX-2.2"})
 
     assert detected.format is DocumentFormat.SPDX

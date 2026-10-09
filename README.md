@@ -6,7 +6,7 @@ SPDX-License-Identifier: BSD-3-Clause
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)](LICENSE)
 
-A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents. SPDX 2.3 documents receive configurable completeness requirements; SPDX 3.0.1 documents currently receive structural schema and semantic validation.
+A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents. SPDX 2.3 documents support configurable additional requirements for completeness validation.
 
 ## Features
 
@@ -23,10 +23,6 @@ A multi-format SBOM validator supporting SPDX 2.3 and SPDX 3.0.1 JSON documents.
 SPDX 3.0.1 documents receive core SPDX validation only. This includes the
 SPDX 3.0.1 schema and semantic SHACL validation provided by the SPDX 3
 validator.
-
-Qualcomm completeness and profile validation is currently supported for SPDX
-2.3 documents only. The configured Qualcomm profile is not applied to SPDX
-3.0.1 documents.
 
 When using the combined `sbom-check` result, `profile_status` describes the
 profile portion of validation:
@@ -46,7 +42,7 @@ not itself a profile failure.
 
 - Validation requires outbound access to SPDX-hosted contexts, schemas, and SHACL resources.
 - Resource failures return an error with rule ID
-  `spdx3_remote_resource_unavailable`. They set `is_valid` to `false`, but leave
+  `remote_resource_unavailable`. They set `is_valid` to `false`, but leave
   `schema_valid` and `semantic_valid` as `null` because those checks were not
   evaluated. They are not SBOM content or semantic failures.
 - Each input file is validated independently; merged or cross-document validation is not supported.

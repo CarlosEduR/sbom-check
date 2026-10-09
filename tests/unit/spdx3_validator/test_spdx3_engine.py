@@ -53,7 +53,7 @@ class TestValidationEngine:
         assert result.is_valid is False
         assert result.schema_valid is None
         assert result.semantic_valid is None
-        assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
+        assert result.messages[0].rule_id == "remote_resource_unavailable"
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_dict_http_protocol_failure_is_remote_resource_failure(
@@ -69,7 +69,7 @@ class TestValidationEngine:
         assert result.is_valid is False
         assert result.schema_valid is None
         assert result.semantic_valid is None
-        assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
+        assert result.messages[0].rule_id == "remote_resource_unavailable"
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_dict_parser_failure_is_structured(self, mock_validate: Mock):

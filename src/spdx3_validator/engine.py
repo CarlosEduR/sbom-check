@@ -32,6 +32,8 @@ SPDX_VERSION = "3.0.1"
 
 
 class ValidationEngine(ValidatorEngine):
+    """Validation engine for SPDX 3.0.1 documents."""
+
     def __init__(self) -> None:
         """Initialize the validation engine for SPDX 3.0.1."""
         self.format = DocumentFormat.SPDX3

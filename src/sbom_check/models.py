@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from sbom_validator.models import DocumentFormat
 
+REMOTE_RESOURCE_UNAVAILABLE_RULE_ID = "remote_resource_unavailable"
+
 if TYPE_CHECKING:
     from sbom_validator.engine import ValidationResultProtocol
 

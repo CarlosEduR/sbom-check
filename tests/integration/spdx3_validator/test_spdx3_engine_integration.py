@@ -11,7 +11,7 @@ import pytest
 
 from spdx3_validator.engine import ValidationEngine
 
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures"
 MINIMAL_DOCUMENT = FIXTURES_DIR / "minimal-spdx3.0.1.spdx.json"
 
 
@@ -29,10 +29,10 @@ class TestSpdx3ValidationIntegration:
         assert result.messages == []
 
     def test_missing_required_attribute_reports_all_validation_messages(
-        self, tmp_path: Path
+        self, tmp_path: Path, minimal_spdx3_document: dict
     ) -> None:
         """Report schema and SHACL errors for a missing object attribute."""
-        document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+        document_data = minimal_spdx3_document
         agent = next(
             node for node in document_data["@graph"] if node.get("type") == "Agent"
         )
@@ -97,14 +97,14 @@ class TestSpdx3ValidationIntegration:
         assert result.schema_valid is None
         assert result.semantic_valid is None
         assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "spdx3_remote_resource_unavailable"
+        assert result.messages[0].rule_id == "remote_resource_unavailable"
         assert "required remote resource was unavailable" in result.messages[0].message
 
     def test_invalid_shacl_document_reports_affected_elements(
-        self, tmp_path: Path
+        self, tmp_path: Path, minimal_spdx3_document: dict
     ) -> None:
         """Preserve SHACL focus nodes as affected elements."""
-        document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+        document_data = minimal_spdx3_document
         document_data["@graph"][0]["creationInfo"] = "_:MissingCreationInfo"
         invalid_document = tmp_path / "invalid-shacl.spdx.json"
         invalid_document.write_text(json.dumps(document_data), encoding="utf-8")
@@ -120,10 +120,10 @@ class TestSpdx3ValidationIntegration:
         )
 
     def test_unknown_spdx_version_returns_validation_message(
-        self, tmp_path: Path
+        self, tmp_path: Path, minimal_spdx3_document: dict
     ) -> None:
         """Reject a document using an unknown SPDX version."""
-        document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+        document_data = minimal_spdx3_document
         document_data["@context"] = "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"
         unknown_version = tmp_path / "unknown-version.spdx.json"
         unknown_version.write_text(json.dumps(document_data), encoding="utf-8")
@@ -138,10 +138,10 @@ class TestSpdx3ValidationIntegration:
         assert "Unsupported SPDX version" in result.messages[0].message
 
     def test_non_matching_spdx_context_returns_validation_message(
-        self, tmp_path: Path
+        self, tmp_path: Path, minimal_spdx3_document: dict
     ) -> None:
         """Reject an SPDX context other than the supported context."""
-        document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+        document_data = minimal_spdx3_document
         document_data["@context"] = "https://spdx.org/rdf/3.0.0/spdx-context.jsonld"
         incompatible_version = tmp_path / "incompatible-version.spdx.json"
         incompatible_version.write_text(json.dumps(document_data), encoding="utf-8")
@@ -156,10 +156,10 @@ class TestSpdx3ValidationIntegration:
         assert "incompatible version 3.0.0" in result.messages[0].message
 
     def test_missing_required_agent_reports_formatted_message(
-        self, tmp_path: Path
+        self, tmp_path: Path, minimal_spdx3_document: dict
     ) -> None:
         """Report a missing agent referenced by the document."""
-        document_data = json.loads(MINIMAL_DOCUMENT.read_text(encoding="utf-8"))
+        document_data = minimal_spdx3_document
         document_data["@graph"] = [
             node for node in document_data["@graph"] if node.get("type") != "Agent"
         ]

@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from sbom_check.models import DocumentFormat
-from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 from spdx_validator.engine import ValidationEngine
 
 if TYPE_CHECKING:
@@ -106,6 +105,11 @@ def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
 
 
 def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
+    # Keep SPDX 3 dependencies out of SPDX 2.3-only startup paths.
+    from spdx3_validator.engine import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+        ValidationEngine as SPDX3ValidationEngine,
+    )
+
     spec_version = _detect_spdx3_version(data)
     return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
 

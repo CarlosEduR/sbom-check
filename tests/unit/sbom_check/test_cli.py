@@ -208,6 +208,20 @@ def test_cli_uses_spdx_display_name_for_spdx3(mock_engine_class, tmp_path):
     assert "Profile: " not in result.output
 
 
+def test_cli_rejects_unsupported_spdx_version(tmp_path):
+    """Report unsupported SPDX versions as structured validation errors."""
+    document_path = tmp_path / "unsupported.spdx.json"
+    document_path.write_text(json.dumps({"spdxVersion": "SPDX-2.2"}), encoding="utf-8")
+
+    result = CliRunner().invoke(main, [str(document_path), "--output-format", "json"])
+
+    assert result.exit_code == 1
+    assert "Unsupported SPDX version" in result.output
+    assert '"rule_id": "unsupported_spdx_version"' in result.output
+    assert '"document_format": "unknown"' in result.output
+    assert '"profile_status": "not_applicable"' in result.output
+
+
 @patch("sbom_check.cli.SbomCheckEngine")
 def test_cli_validate_valid_file(mock_engine_class, tmp_path):
     """Test CLI with valid SPDX file."""

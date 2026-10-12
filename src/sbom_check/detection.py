@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from sbom_validator.engine import ValidatorEngine
 
 SPDX3_CONTEXT_PREFIX = "https://spdx.org/rdf/3."
+SPDX2_SUPPORTED_VERSION = "SPDX-2.3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +28,7 @@ class DetectedDocument:
 
 
 class UnsupportedDocumentError(ValueError):
-    """Raised when a JSON object is not a supported SBOM document."""
+    """Raised when input is malformed or declares an unsupported format/version."""
 
     def __init__(self, message: str, *, rule_id: str = "unsupported_format") -> None:
         super().__init__(message)
@@ -79,20 +80,21 @@ def detect_document(data: Any) -> DetectedDocument:
     )
 
 
-def _detect_spdx_version(data: dict[str, Any]) -> str | None:
+def _detect_spdx_version(data: dict[str, Any]) -> str:
     version = data.get("spdxVersion")
-    spec_version = (
-        version.removeprefix("SPDX-") if isinstance(version, str) and version else None
-    )
+    if not isinstance(version, str) or version != SPDX2_SUPPORTED_VERSION:
+        raise UnsupportedDocumentError(
+            f"Unsupported SPDX version: {version!r}; "
+            f"only {SPDX2_SUPPORTED_VERSION} is supported",
+            rule_id="unsupported_spdx_version",
+        )
 
-    return spec_version
+    return version.removeprefix("SPDX-")
 
 
 def _detect_spdx3_version(data: dict[str, Any]) -> str | None:
     context = data.get("@context")
-    if not isinstance(context, str) or not context.startswith(
-        "https://spdx.org/rdf/"
-    ):
+    if not isinstance(context, str) or not context.startswith("https://spdx.org/rdf/"):
         return None
 
     version, _, _ = context.removeprefix("https://spdx.org/rdf/").partition("/")
@@ -114,9 +116,7 @@ def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
     return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
 
 
-def get_document_version(
-    document_format: DocumentFormat, data: Any
-) -> str | None:
+def get_document_version(document_format: DocumentFormat, data: Any) -> str | None:
     if not isinstance(data, dict):
         raise UnsupportedDocumentError(
             "Unsupported input: the JSON document must be a top-level object"

@@ -444,35 +444,36 @@ def test_document_namespace_fragment_prohibited():
     )
 
 
-def test_missing_spdx_version_preserves_validator_and_profile_diagnostics(
+def test_missing_spdx_version_returns_structured_unsupported_result(
     sample_valid_spdx_document,
 ):
     document = deepcopy(sample_valid_spdx_document)
     document.pop("spdxVersion")
-    document["packages"][0].pop("downloadLocation")
-    document["creationInfo"].pop("licenseListVersion")
-    document["relationships"] = []
 
     result = SbomCheckEngine().validate_dict(document)
-    messages = [message.message for message in result.messages]
 
-    assert result.document_format == "SPDX"
-    assert len(messages) > 1
-    assert any("downloadLocation" in message for message in messages)
-    assert any("spdxVersion" in message for message in messages)
-    assert any("licenseListVersion" in message for message in messages)
-    assert any("DESCRIBES" in message for message in messages)
+    assert not result.overall_valid
+    assert result.document_format == "unknown"
+    assert result.spec_version is None
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert len(result.messages) == 1
+    assert result.messages[0].rule_id == "unsupported_spdx_version"
 
 
-def test_unsupported_spdx_version_preserves_validator_diagnostics(
+def test_unsupported_spdx_version_returns_structured_result(
     sample_invalid_spdx_document,
 ):
     result = SbomCheckEngine().validate_dict(sample_invalid_spdx_document)
-    messages = [message.message for message in result.messages]
 
-    assert result.document_format == "SPDX"
-    assert len(messages) > 1
-    assert any("SPDX-2.2" in message or "SPDX-2.3" in message for message in messages)
+    assert not result.overall_valid
+    assert result.document_format == "unknown"
+    assert result.spec_version is None
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert len(result.messages) == 1
+    assert result.messages[0].rule_id == "unsupported_spdx_version"
+    assert "SPDX-2.2" in result.messages[0].message
 
 
 def test_engine_returns_structured_result_for_unsupported_input():

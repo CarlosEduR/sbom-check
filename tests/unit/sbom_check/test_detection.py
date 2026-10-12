@@ -46,9 +46,19 @@ def test_reject_non_object_json(value: object) -> None:
         detect_document(value)
 
 
-def test_detect_spdx_version_dispatches_to_spdx_validator() -> None:
-    detected = detect_document({"spdxVersion": "SPDX-2.2"})
+@pytest.mark.parametrize(
+    "document",
+    [
+        {"spdxVersion": "SPDX-2.2"},
+        {"spdxVersion": "SPDX-9.9"},
+        {"spdxVersion": "2.3"},
+        {"spdxVersion": None},
+        {"SPDXID": "SPDXRef-DOCUMENT"},
+    ],
+)
+def test_reject_unsupported_spdx_version(document: dict[str, object]) -> None:
+    with pytest.raises(UnsupportedDocumentError) as error_info:
+        detect_document(document)
 
-    assert detected.format is DocumentFormat.SPDX
-    assert detected.spec_version == "2.2"
-    assert detected.validator_class is ValidationEngine
+    assert error_info.value.rule_id == "unsupported_spdx_version"
+    assert "only SPDX-2.3 is supported" in str(error_info.value)

@@ -31,6 +31,20 @@ def test_detect_spdx_3_0_1():
     assert detected.validator_class is SPDX3ValidationEngine
 
 
+def test_reject_conflicting_spdx2_and_spdx3_markers() -> None:
+    with pytest.raises(UnsupportedDocumentError) as error_info:
+        detect_document(
+            {
+                "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+                "spdxVersion": "SPDX-2.3",
+                "SPDXID": "SPDXRef-DOCUMENT",
+            }
+        )
+
+    assert error_info.value.rule_id == "conflicting_format_markers"
+    assert "Conflicting SPDX 2 and SPDX 3 format markers" in str(error_info.value)
+
+
 @pytest.mark.parametrize(
     "context",
     [

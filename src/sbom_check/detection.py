@@ -58,10 +58,10 @@ def detect_document(data: Any) -> DetectedDocument:
         )
 
     context = data.get("@context")
-    if isinstance(context, str) and context.startswith(SPDX3_CONTEXT_PREFIX):
-        return _detect_spdx3(data)
-
-    has_spdx_marker = any(
+    has_spdx3_marker = isinstance(context, str) and context.startswith(
+        SPDX3_CONTEXT_PREFIX
+    )
+    has_spdx2_marker = any(
         marker in data
         for marker in (
             "SPDXID",
@@ -72,7 +72,16 @@ def detect_document(data: Any) -> DetectedDocument:
         )
     )
 
-    if has_spdx_marker:
+    if has_spdx3_marker and has_spdx2_marker:
+        raise UnsupportedDocumentError(
+            "Conflicting SPDX 2 and SPDX 3 format markers",
+            rule_id="conflicting_format_markers",
+        )
+
+    if has_spdx3_marker:
+        return _detect_spdx3(data)
+
+    if has_spdx2_marker:
         return _detect_spdx(data)
 
     raise UnsupportedDocumentError(

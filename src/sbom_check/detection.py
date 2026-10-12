@@ -61,13 +61,14 @@ def detect_document(data: Any) -> DetectedDocument:
     has_spdx3_marker = isinstance(context, str) and context.startswith(
         SPDX3_CONTEXT_PREFIX
     )
+    # These markers are specific to SPDX 2.x.  Properties such as
+    # ``creationInfo`` and ``dataLicense`` are also valid SPDX 3 properties
+    # and must not be used to identify an SPDX 2 document.
     has_spdx2_marker = any(
         marker in data
         for marker in (
             "SPDXID",
             "documentNamespace",
-            "creationInfo",
-            "dataLicense",
             "spdxVersion",
         )
     )

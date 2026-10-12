@@ -476,6 +476,21 @@ def test_unsupported_spdx_version_returns_structured_result(
     assert "SPDX-2.2" in result.messages[0].message
 
 
+def test_unsupported_spdx3_version_returns_structured_result():
+    result = SbomCheckEngine().validate_dict(
+        {"@context": "https://spdx.org/rdf/3.0.0/spdx-context.jsonld"}
+    )
+
+    assert not result.overall_valid
+    assert result.document_format == "unknown"
+    assert result.spec_version is None
+    assert result.core_valid is False
+    assert result.profile_status is ProfileStatus.NOT_APPLICABLE
+    assert len(result.messages) == 1
+    assert result.messages[0].rule_id == "unsupported_spdx_version"
+    assert "3.0.0" in result.messages[0].message
+
+
 def test_engine_returns_structured_result_for_unsupported_input():
     """Unsupported documents never fall through to SPDX validation."""
     result = SbomCheckEngine().validate_dict({"format": "unknown"})

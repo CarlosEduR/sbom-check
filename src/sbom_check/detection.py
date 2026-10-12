@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 SPDX3_CONTEXT_PREFIX = "https://spdx.org/rdf/3."
 SPDX2_SUPPORTED_VERSION = "SPDX-2.3"
+SPDX3_SUPPORTED_VERSION = "3.0.1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,13 +93,36 @@ def _detect_spdx_version(data: dict[str, Any]) -> str:
     return version.removeprefix("SPDX-")
 
 
-def _detect_spdx3_version(data: dict[str, Any]) -> str | None:
+def _detect_spdx3_version(data: dict[str, Any]) -> str:
     context = data.get("@context")
-    if not isinstance(context, str) or not context.startswith("https://spdx.org/rdf/"):
-        return None
+    if "@context" not in data:
+        raise UnsupportedDocumentError(
+            "The SPDX 3 document is missing the required @context.",
+            rule_id="spdx3_missing_context",
+        )
+
+    if not isinstance(context, str):
+        raise UnsupportedDocumentError(
+            "Unsupported @context format: expected a string.",
+            rule_id="spdx3_unsupported_context_format",
+        )
+
+    if not context.startswith(SPDX3_CONTEXT_PREFIX):
+        raise UnsupportedDocumentError(
+            f"Unsupported SPDX 3 context: {context!r}; "
+            f"only SPDX-{SPDX3_SUPPORTED_VERSION} is supported",
+            rule_id="unsupported_spdx_version",
+        )
 
     version, _, _ = context.removeprefix("https://spdx.org/rdf/").partition("/")
-    return version or None
+    if version != SPDX3_SUPPORTED_VERSION:
+        raise UnsupportedDocumentError(
+            f"Unsupported SPDX version: {version!r}; "
+            f"only SPDX-{SPDX3_SUPPORTED_VERSION} is supported",
+            rule_id="unsupported_spdx_version",
+        )
+
+    return version
 
 
 def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
@@ -107,16 +131,17 @@ def _detect_spdx(data: dict[str, Any]) -> DetectedDocument:
 
 
 def _detect_spdx3(data: dict[str, Any]) -> DetectedDocument:
+    spec_version = _detect_spdx3_version(data)
+
     # Keep SPDX 3 dependencies out of SPDX 2.3-only startup paths.
     from spdx3_validator.engine import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
         ValidationEngine as SPDX3ValidationEngine,
     )
 
-    spec_version = _detect_spdx3_version(data)
     return DetectedDocument(DocumentFormat.SPDX3, spec_version, SPDX3ValidationEngine)
 
 
-def get_document_version(document_format: DocumentFormat, data: Any) -> str | None:
+def get_document_version(document_format: DocumentFormat, data: Any) -> str:
     if not isinstance(data, dict):
         raise UnsupportedDocumentError(
             "Unsupported input: the JSON document must be a top-level object"

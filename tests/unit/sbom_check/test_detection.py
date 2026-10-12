@@ -8,6 +8,7 @@ from sbom_check.detection import (
     DocumentFormat,
     UnsupportedDocumentError,
     detect_document,
+    get_document_version,
 )
 from spdx3_validator.engine import ValidationEngine as SPDX3ValidationEngine
 from spdx_validator.engine import ValidationEngine
@@ -28,6 +29,41 @@ def test_detect_spdx_3_0_1():
     assert detected.format is DocumentFormat.SPDX3
     assert detected.spec_version == "3.0.1"
     assert detected.validator_class is SPDX3ValidationEngine
+
+
+@pytest.mark.parametrize(
+    "context",
+    [
+        "https://spdx.org/rdf/3.0.0/spdx-context.jsonld",
+        "https://spdx.org/rdf/3.9.9/spdx-context.jsonld",
+    ],
+)
+def test_reject_unsupported_spdx3_version(context: str) -> None:
+    with pytest.raises(UnsupportedDocumentError) as error_info:
+        detect_document({"@context": context})
+
+    assert error_info.value.rule_id == "unsupported_spdx_version"
+    assert "only SPDX-3.0.1 is supported" in str(error_info.value)
+
+
+@pytest.mark.parametrize(
+    ("document", "rule_id"),
+    [
+        ({}, "spdx3_missing_context"),
+        ({"@context": {"spdx": "3.0.1"}}, "spdx3_unsupported_context_format"),
+        (
+            {"@context": "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"},
+            "unsupported_spdx_version",
+        ),
+    ],
+)
+def test_reject_invalid_spdx3_context(
+    document: dict[str, object], rule_id: str
+) -> None:
+    with pytest.raises(UnsupportedDocumentError) as error_info:
+        get_document_version(DocumentFormat.SPDX3, document)
+
+    assert error_info.value.rule_id == rule_id
 
 
 def test_reject_spdx3_graph_without_context():

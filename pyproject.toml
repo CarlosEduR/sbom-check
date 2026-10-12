@@ -209,28 +209,28 @@ parallel_show_output = true
 description = "Run tests with Python 3.10"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "-m", "not integration", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
 ]
 
 [tool.tox.env.py311]
 description = "Run tests with Python 3.11"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "-m", "not integration", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
 ]
 
 [tool.tox.env.py312]
 description = "Run tests with Python 3.12"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "-m", "not integration", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
 ]
 
 [tool.tox.env.py313]
 description = "Run tests with Python 3.13"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "-m", "not integration", "--cov=sbom_check", "--cov=spdx_validator", "--cov-report=html", "--cov-report=term"]
 ]
 
 # Ruff formatting

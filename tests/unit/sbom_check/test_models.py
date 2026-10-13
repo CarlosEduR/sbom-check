@@ -84,6 +84,15 @@ def test_convert_spdx_messages_preserves_diagnostics():
     assert message.remediation == raw_message.remediation
 
 
+def test_combine_legacy_spdx_result_preserves_spdx_validity():
+    """Legacy SPDX results retain their validity field."""
+    result = SbomCheckResult.combine(
+        spdx_result=SimpleNamespace(is_valid=True, messages=[])
+    )
+
+    assert result.spdx_valid is True
+
+
 def test_validation_summary_success_rate():
     """Test ValidationSummary success rate calculation."""
     summary = ValidationSummary(

@@ -74,7 +74,7 @@ class TestShaclDiagnosticParser:
     ):
         """Translate a value that does not match a required pattern."""
         document = minimal_spdx3_document
-        document["@graph"][1]["created"] = "not-a-date"
+        document["@graph"][1]["created"] = "not a date"
 
         messages = _shacl_messages(document, tmp_path / "pattern-diagnostic.spdx.json")
 
@@ -84,7 +84,7 @@ class TestShaclDiagnosticParser:
         assert message.section_reference == "SPDX 3.0.1 SHACL validation"
         assert message.field_path == "created"
         assert message.found_value == (
-            '"not-a-date"^^<http://www.w3.org/2001/XMLSchema#dateTimeStamp>'
+            '"not a date"^^<http://www.w3.org/2001/XMLSchema#dateTimeStamp>'
         )
         assert message.expected_value == r"^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$"
         assert message.message == (

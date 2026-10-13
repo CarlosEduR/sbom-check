@@ -22,6 +22,17 @@ def _match_value(match: re.Match[str] | None) -> str | None:
     return match.group(1) or match.group(2)
 
 
+def _parse_value_node(error_text: str) -> str | None:
+    """Extract and normalize the Value Node from a SHACL error."""
+    if not (match := re.search(r"Value Node:[ \t]*(.*)", error_text)):
+        return None
+
+    value = match.group(1).strip()
+    if value.startswith("<") and value.endswith(">"):
+        return value[1:-1]
+    return value
+
+
 def _shape_value(error_text: str, property_name: str) -> str | None:
     match = re.search(rf"sh:{property_name}\s+([^;\n]+)", error_text)
     return match.group(1).strip() if match else None
@@ -77,14 +88,13 @@ class ShaclDiagnosticParser:
         """
         constraint = re.search(r"Violation of type sh:(\w+)", error_text)
         focus = re.search(r"Focus Node:\s*(?:<([^>]+)>|(\S+))", error_text)
-        value = re.search(r"Value Node:\s*(?:<([^>]+)>|(\S+))", error_text)
         result_path = re.search(r"Result path:\s*(?:<([^>]+)>|(\S+))", error_text)
         expected_class = re.search(r"sh:class <([^>]+)>", error_text)
         detail = re.search(r"Message:\s*(.+)", error_text)
 
         constraint_name = constraint.group(1) if constraint else "GenericViolation"
         focus_node = _match_value(focus)
-        value_node = _match_value(value)
+        value_node = _parse_value_node(error_text)
         path = _match_value(result_path)
         expected = _local_name(expected_class.group(1)) if expected_class else None
         raw_message = error_text.strip()

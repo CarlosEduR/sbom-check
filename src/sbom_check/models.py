@@ -180,7 +180,15 @@ class SbomCheckResult(BaseModel):
         core_valid = core_result.is_valid
         is_spdx_document = document_format is DocumentFormat.SPDX
         spdx_valid = core_valid if is_spdx_document else None
-        profile_valid = profile_result.overall_valid if profile_result else None
+
+        if profile_result is not None:
+            profile_valid = profile_result.overall_valid
+        elif using_legacy_spdx_result:
+            # Preserve the legacy API behavior when no profile was supplied.
+            profile_valid = True
+        else:
+            profile_valid = None
+
         profile_status = (
             ProfileStatus.PASSED
             if profile_result and profile_valid

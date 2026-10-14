@@ -91,6 +91,7 @@ def test_combine_legacy_spdx_result_preserves_spdx_validity():
     )
 
     assert result.spdx_valid is True
+    assert result.profile_valid is True
 
 
 def test_validation_summary_success_rate():

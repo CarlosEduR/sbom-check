@@ -317,14 +317,32 @@ class ValidationEngine(ValidatorEngine):
                 semantic_valid=False,
             )
 
-        if not isinstance(spdx_data["@context"], str):
+        context = spdx_data["@context"]
+        if isinstance(context, list):
+            return ValidationResult(
+                is_valid=False,
+                messages=[
+                    ValidationMessage(
+                        severity=ValidationSeverity.ERROR,
+                        message=(
+                            "SPDX 3 documents with an array-valued @context are not "
+                            "supported by the underlying validator."
+                        ),
+                        rule_id="unsupported_spdx3_context_form",
+                    )
+                ],
+                schema_valid=False,
+                semantic_valid=False,
+            )
+
+        if not isinstance(context, str):
             return ValidationResult(
                 is_valid=False,
                 messages=[
                     ValidationMessage(
                         severity=ValidationSeverity.ERROR,
                         message="Unsupported @context format: expected a string.",
-                        rule_id="spdx3_unsupported_context_format",
+                        rule_id="unsupported_spdx3_context_form",
                     )
                 ],
                 schema_valid=False,

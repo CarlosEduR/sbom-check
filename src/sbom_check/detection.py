@@ -36,6 +36,20 @@ class UnsupportedDocumentError(ValueError):
         self.rule_id = rule_id
 
 
+def _has_spdx3_context_marker(context: Any) -> bool:
+    """Return whether a context string or context array declares SPDX 3."""
+    if isinstance(context, str):
+        return context.startswith(SPDX3_CONTEXT_PREFIX)
+
+    if isinstance(context, list):
+        return any(
+            isinstance(item, str) and item.startswith(SPDX3_CONTEXT_PREFIX)
+            for item in context
+        )
+
+    return False
+
+
 def detect_document(data: Any) -> DetectedDocument:
     """Detect the supported SBOM format and declared specification version.
 
@@ -58,9 +72,7 @@ def detect_document(data: Any) -> DetectedDocument:
         )
 
     context = data.get("@context")
-    has_spdx3_marker = isinstance(context, str) and context.startswith(
-        SPDX3_CONTEXT_PREFIX
-    )
+    has_spdx3_marker = _has_spdx3_context_marker(context)
     # These markers are specific to SPDX 2.x.  Properties such as
     # ``creationInfo`` and ``dataLicense`` are also valid SPDX 3 properties
     # and must not be used to identify an SPDX 2 document.
@@ -111,10 +123,17 @@ def _detect_spdx3_version(data: dict[str, Any]) -> str:
             rule_id="spdx3_missing_context",
         )
 
+    if isinstance(context, list):
+        raise UnsupportedDocumentError(
+            "SPDX 3 documents with an array-valued @context are not supported "
+            "by the underlying validator.",
+            rule_id="unsupported_spdx3_context_form",
+        )
+
     if not isinstance(context, str):
         raise UnsupportedDocumentError(
             "Unsupported @context format: expected a string.",
-            rule_id="spdx3_unsupported_context_format",
+            rule_id="unsupported_spdx3_context_form",
         )
 
     if not context.startswith(SPDX3_CONTEXT_PREFIX):

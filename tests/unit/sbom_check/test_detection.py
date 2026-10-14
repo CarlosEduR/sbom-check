@@ -31,6 +31,24 @@ def test_detect_spdx_3_0_1():
     assert detected.validator_class is SPDX3ValidationEngine
 
 
+@pytest.mark.parametrize(
+    "context",
+    [
+        ["https://spdx.org/rdf/3.0.1/spdx-context.jsonld"],
+        [
+            "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+            {"ex": "https://example.com/"},
+        ],
+    ],
+)
+def test_reject_spdx3_array_context_with_accurate_error(context: list[object]) -> None:
+    with pytest.raises(UnsupportedDocumentError) as error_info:
+        detect_document({"@context": context})
+
+    assert error_info.value.rule_id == "unsupported_spdx3_context_form"
+    assert "array-valued @context" in str(error_info.value)
+
+
 def test_detect_spdx3_single_object_with_shared_properties() -> None:
     detected = detect_document(
         {
@@ -80,7 +98,7 @@ def test_reject_unsupported_spdx3_version(context: str) -> None:
     ("document", "rule_id"),
     [
         ({}, "spdx3_missing_context"),
-        ({"@context": {"spdx": "3.0.1"}}, "spdx3_unsupported_context_format"),
+        ({"@context": {"spdx": "3.0.1"}}, "unsupported_spdx3_context_form"),
         (
             {"@context": "https://spdx.org/rdf/4.0.0/spdx-context.jsonld"},
             "unsupported_spdx_version",

@@ -556,3 +556,27 @@ def test_engine_uses_explicit_spdx3_validator_class(mock_validate):
     assert result.spec_version == "3.0.1"
     mock_validate.assert_called_once()
     assert mock_validate.call_args.kwargs["version"] == "3.0.1"
+
+
+@patch("spdx3_validator.engine.validate")
+def test_explicit_spdx3_validator_rejects_array_context(mock_validate):
+    """Report the unsupported array context with an explicit SPDX 3 validator."""
+    engine = SbomCheckEngine(validator_class=SPDX3ValidationEngine)
+
+    result = engine.validate_dict(
+        {
+            "@context": [
+                "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+                {"ex": "https://example.com/"},
+            ]
+        }
+    )
+
+    assert result.overall_valid is False
+    assert result.core_valid is False
+    assert result.messages[0].rule_id == "unsupported_spdx3_context_form"
+    assert result.messages[0].message == (
+        "SPDX 3 documents with an array-valued @context are not supported "
+        "by the underlying validator."
+    )
+    mock_validate.assert_not_called()

@@ -126,9 +126,32 @@ class TestValidationEngine:
         assert result.schema_valid is False
         assert result.semantic_valid is False
         assert len(result.messages) == 1
-        assert result.messages[0].rule_id == "spdx3_unsupported_context_format"
+        assert result.messages[0].rule_id == "unsupported_spdx3_context_form"
         assert result.messages[0].message == (
             "Unsupported @context format: expected a string."
+        )
+        mock_validate.assert_not_called()
+
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_rejects_array_context(self, mock_validate: Mock):
+        """Reject an SPDX document whose context is an array."""
+        result = ValidationEngine().validate_dict(
+            {
+                "@context": [
+                    "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+                    {"ex": "https://example.com/"},
+                ]
+            }
+        )
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert len(result.messages) == 1
+        assert result.messages[0].rule_id == "unsupported_spdx3_context_form"
+        assert result.messages[0].message == (
+            "SPDX 3 documents with an array-valued @context are not "
+            "supported by the underlying validator."
         )
         mock_validate.assert_not_called()
 

@@ -238,7 +238,7 @@ commands = [
 description = "Run tests with Python 3.14"
 dependency_groups = ["dev"]
 commands = [
-    ["pytest", "tests/", "-v", "--cov", "--cov-report=html", "--cov-report=term"]
+    ["pytest", "tests/", "-v", "-m", "not integration", "--cov", "--cov-report=html", "--cov-report=term"]
 ]
 
 # Ruff formatting

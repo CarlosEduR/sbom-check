@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 from urllib.error import URLError
 
+import pytest
 from rdflib.exceptions import ParserError
 from spdx3_validate.core import UnknownVersionError
 from spdx3_validate.core import (
@@ -84,6 +85,40 @@ class TestValidationEngine:
         assert result.schema_valid is None
         assert result.semantic_valid is None
         assert result.messages[0].rule_id == "spdx3_validation_parse_error"
+
+    @pytest.mark.parametrize(
+        ("document", "parser_exception"),
+        [
+            (
+                {
+                    "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+                    "@graph": [{"@id": "_:x", "@reverse": 5}],
+                },
+                AttributeError("'int' object has no attribute 'items'"),
+            ),
+            (
+                {
+                    "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+                    "@graph": [{"@context": 5, "type": "Agent"}],
+                },
+                AttributeError("'int' object has no attribute 'get'"),
+            ),
+        ],
+    )
+    @patch("spdx3_validator.engine.validate")
+    def test_validate_dict_malformed_node_is_structured_input_error(
+        self, mock_validate: Mock, document: dict, parser_exception: Exception
+    ):
+        """Do not leak rdflib Python exceptions for malformed JSON-LD nodes."""
+        mock_validate.side_effect = parser_exception
+
+        result = ValidationEngine().validate_dict(document)
+
+        assert result.is_valid is False
+        assert result.schema_valid is False
+        assert result.semantic_valid is False
+        assert result.messages[0].rule_id == "spdx3_validation_input_error"
+        assert "Invalid SPDX 3 validation input" in result.messages[0].message
 
     @patch("spdx3_validator.engine.validate")
     def test_validate_dict_rejects_non_object(self, mock_validate: Mock):

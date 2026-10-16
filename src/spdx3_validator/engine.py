@@ -236,7 +236,11 @@ class ValidationEngine(ValidatorEngine):
                 schema_valid=False,
                 semantic_valid=False,
             )
-        except ValueError as e:
+        except (AttributeError, TypeError, ValueError) as e:
+            # rdflib's JSON-LD parser can raise ordinary Python exceptions for
+            # malformed node content (rather than a ParserError). Keep those
+            # failures local to this document so callers can continue validating
+            # a batch of files.
             return ValidationResult(
                 is_valid=False,
                 messages=[

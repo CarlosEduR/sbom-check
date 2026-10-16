@@ -3,6 +3,8 @@
 
 """Unit tests for the SPDX 3 validator CLI."""
 
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -24,6 +26,47 @@ def test_jobs_must_be_positive(tmp_path):
 
     assert result.exit_code == 2
     assert "Invalid value for '--jobs'" in result.output
+
+
+def test_batch_continues_when_one_file_has_structured_input_error(tmp_path):
+    """Report a malformed file without aborting validation of the batch."""
+    good = tmp_path / "good.spdx.json"
+    bad = tmp_path / "bad.spdx.json"
+    good.write_text("{}", encoding="utf-8")
+    bad.write_text("{}", encoding="utf-8")
+
+    valid_result = ValidationResult(
+        is_valid=True,
+        schema_valid=True,
+        semantic_valid=True,
+        messages=[],
+    )
+    invalid_result = ValidationResult(
+        is_valid=False,
+        schema_valid=False,
+        semantic_valid=False,
+        messages=[
+            ValidationMessage(
+                severity=ValidationSeverity.ERROR,
+                message="Invalid SPDX 3 validation input: malformed node",
+                rule_id="spdx3_validation_input_error",
+            )
+        ],
+    )
+
+    def validate_file(file_path: Path):
+        return file_path, invalid_result if file_path == bad else valid_result
+
+    with (
+        patch("spdx3_validator.cli.ProcessPoolExecutor", ThreadPoolExecutor),
+        patch("spdx3_validator.cli.validate_single_file", side_effect=validate_file),
+    ):
+        result = CliRunner().invoke(main, [str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "bad.spdx.json" in result.output
+    assert "good.spdx.json" in result.output
+    assert "spdx3_validation_input_error" in result.output
 
 
 def test_remote_resource_failure_has_distinct_exit_code(tmp_path):

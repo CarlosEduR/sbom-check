@@ -137,22 +137,26 @@ class SbomCheckResult(BaseModel):
     @classmethod
     def combine(  # pylint: disable=too-many-positional-arguments,too-many-locals  # noqa: PLR0917,RUF100
         cls,
-        core_result: ValidationResultProtocol | None = None,
+        spdx_result: ValidationResultProtocol | None = None,
         profile_result: SbomCheckResult | None = None,
         profile_name: str | None = None,
         file_path: str | None = None,
         document_format: DocumentFormat = DocumentFormat.UNKNOWN,
         spec_version: str | None = None,
         *,
-        spdx_result: ValidationResultProtocol | None = None,
+        core_result: ValidationResultProtocol | None = None,
     ) -> SbomCheckResult:
-        """Combine core validation result with profile validation result.
+        """Combine a validation result with optional profile results.
 
-        ``spdx_result`` is deprecated; use ``core_result`` instead.
+        The first positional parameter retains its historical ``spdx_result``
+        meaning. New callers should pass ``core_result`` by keyword.
         """
         using_legacy_spdx_result = spdx_result is not None
-        if core_result is not None and using_legacy_spdx_result:
-            raise TypeError("Pass either core_result or spdx_result, not both")
+        if spdx_result is not None and core_result is not None:
+            raise TypeError("Pass either spdx_result or core_result, not both")
+
+        if core_result is None:
+            core_result = spdx_result
 
         if using_legacy_spdx_result:
             warn_deprecated(
@@ -160,10 +164,10 @@ class SbomCheckResult(BaseModel):
                 DeprecationWarning,
                 stacklevel=2,
             )
-            core_result = spdx_result
-
-        if using_legacy_spdx_result and document_format is DocumentFormat.UNKNOWN:
-            document_format = DocumentFormat.SPDX
+            if document_format is DocumentFormat.UNKNOWN:
+                document_format = DocumentFormat.SPDX
+            if spec_version is None:
+                spec_version = "2.3"
 
         if core_result is None:
             raise TypeError("Missing required argument: core_result")

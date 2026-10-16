@@ -5,6 +5,8 @@
 
 from types import SimpleNamespace
 
+import pytest
+
 from sbom_check.models import (
     ProfileStatus,
     SbomCheckResult,
@@ -12,6 +14,7 @@ from sbom_check.models import (
     ValidationSeverity,
     ValidationSummary,
 )
+from sbom_validator.models import DocumentFormat
 
 
 def test_validation_message_creation():
@@ -92,6 +95,41 @@ def test_combine_legacy_spdx_result_preserves_spdx_validity():
 
     assert result.spdx_valid is True
     assert result.profile_valid is True
+
+
+def test_combine_positional_spdx_result_preserves_legacy_behavior():
+    """The historical positional SPDX result remains backward compatible."""
+    result = SbomCheckResult.combine(
+        SimpleNamespace(is_valid=True, messages=[]),
+        profile_name="default",
+    )
+
+    assert result.spdx_valid is True
+    assert result.profile_valid is True
+    assert result.profile_name == "default"
+    assert result.document_format is DocumentFormat.SPDX
+    assert result.spec_version == "2.3"
+
+
+def test_combine_core_result_keyword_keeps_unknown_format():
+    """Keyword-based core results retain version-neutral behavior."""
+    result = SbomCheckResult.combine(
+        core_result=SimpleNamespace(is_valid=True, messages=[]),
+        profile_name="default",
+    )
+
+    assert result.spdx_valid is None
+    assert result.profile_valid is None
+    assert result.profile_name is None
+    assert result.document_format is DocumentFormat.UNKNOWN
+
+
+def test_combine_rejects_both_result_arguments():
+    """Reject ambiguous legacy and modern result arguments."""
+    validation_result = SimpleNamespace(is_valid=True, messages=[])
+
+    with pytest.raises(TypeError, match="either spdx_result or core_result"):
+        SbomCheckResult.combine(validation_result, core_result=validation_result)
 
 
 def test_validation_summary_success_rate():

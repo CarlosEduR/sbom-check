@@ -183,6 +183,35 @@ SBOM-Check includes an integrated spdx-validator library that provides:
 - **Library Integration**: Used internally by SBOM-Check for base validation
 - **Unified Results**: Combined validation results with detailed error reporting
 
+### Package verification codes
+
+For SPDX 2.3 packages, an omitted `filesAnalyzed` property is treated as `true`,
+matching the official validator behavior. This package verification code check
+matches the official SPDX Java validator, which is stricter than the SPDX 2.3.1
+specification text: it requires a `packageVerificationCode` when files are
+analyzed or `filesAnalyzed` is omitted. The default profile is stricter and
+requires `filesAnalyzed` to be present. In profiles that allow the property to
+be omitted, packages must still provide a `packageVerificationCode` whose value
+is a 40-character hexadecimal SHA-1 value (hex letters a-f may be upper- or
+lowercase).
+Packages with `filesAnalyzed: false` must not include a non-empty verification
+code. For compatibility with the official validator, an explicitly empty
+`packageVerificationCodeValue` is accepted in this case.
+
+SBOM-Check always runs the integrated SPDX semantic validator, which already
+enforces the package verification code requirement. Custom profiles therefore
+should not add `packageVerificationCode` to
+`files_analyzed_rules.when_true_requires` unless a separate profile-specific
+message is intentional; otherwise the same missing code is reported by both
+layers. The empty-value exception applies to the SPDX validator only: a custom
+profile that lists `packageVerificationCode` in
+`files_analyzed_rules.when_false_prohibits` rejects the field even when its
+`packageVerificationCodeValue` is empty.
+
+This means SBOMs that previously omitted both `filesAnalyzed` and
+`packageVerificationCode` may now fail validation; add `filesAnalyzed: false` when
+files were not analyzed, or provide the package verification code when they were.
+
 
 ## Exit Codes
 

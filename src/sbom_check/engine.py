@@ -21,6 +21,7 @@ from sbom_check.models import (
     ValidationSummary,
 )
 from spdx_validator.engine import ValidationEngine
+from spdx_validator.models import DEFAULT_FILES_ANALYZED
 
 if TYPE_CHECKING:
     from sbom_check.config.models import SbomCheckConfig
@@ -400,7 +401,8 @@ class SbomCheckEngine:
                 )
 
         # Validate filesAnalyzed business logic
-        files_analyzed = package.get("filesAnalyzed")
+        # SPDX 2.3 specifies that filesAnalyzed defaults to true when omitted.
+        files_analyzed = package.get("filesAnalyzed", DEFAULT_FILES_ANALYZED)
         if files_analyzed is True:
             # Check required fields when filesAnalyzed is true
             for required_field in pkg_config.files_analyzed_rules.when_true_requires:

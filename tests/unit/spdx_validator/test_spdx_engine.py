@@ -84,6 +84,44 @@ class TestValidationEngine:
         assert engine.schema_validator is None
         assert engine.semantic_validator is not None
 
+    def test_validate_rejects_mismatched_spec_version(
+        self, minimal_spdx_json: str
+    ) -> None:
+        document = json.loads(minimal_spdx_json)
+
+        result = ValidationEngine().validate(document, spec_version="2.2")
+
+        assert not result.is_valid
+        assert result.messages[0].rule_id == "spec_version_mismatch"
+
+    def test_validate_accepts_bare_spec_version(
+        self, minimal_spdx_json: str, mock_validation_result: ValidationResult
+    ) -> None:
+        document = json.loads(minimal_spdx_json)
+        engine = ValidationEngine()
+
+        with patch.object(
+            engine, "validate_dict", return_value=mock_validation_result
+        ) as validate_dict:
+            result = engine.validate(document, spec_version="2.3")
+
+        assert result is mock_validation_result
+        validate_dict.assert_called_once_with(document)
+
+    def test_validate_accepts_prefixed_spec_version(
+        self, minimal_spdx_json: str, mock_validation_result: ValidationResult
+    ) -> None:
+        document = json.loads(minimal_spdx_json)
+        engine = ValidationEngine()
+
+        with patch.object(
+            engine, "validate_dict", return_value=mock_validation_result
+        ) as validate_dict:
+            result = engine.validate(document, spec_version="SPDX-2.3")
+
+        assert result is mock_validation_result
+        validate_dict.assert_called_once_with(document)
+
     def test_validate_json_string_invalid_json(self) -> None:
         """Test validation of invalid JSON string."""
         engine = ValidationEngine()
@@ -95,6 +133,22 @@ class TestValidationEngine:
         assert len(result.messages) == 1
         assert "Invalid JSON" in result.messages[0].message
         assert result.messages[0].rule_id == "json_parse_error"
+
+    def test_legacy_json_keyword_is_supported_with_warning(self) -> None:
+        engine = ValidationEngine()
+
+        with pytest.warns(DeprecationWarning, match="spdx_json"):
+            result = engine.validate_json_string(spdx_json="invalid json {")
+
+        assert not result.is_valid
+
+    def test_legacy_dict_keyword_is_supported_with_warning(self) -> None:
+        engine = ValidationEngine()
+
+        with pytest.warns(DeprecationWarning, match="spdx_data"):
+            result = engine.validate_dict(spdx_data={"test": "data"})
+
+        assert not result.is_valid
 
     @patch("spdx_validator.validators.JsonSchemaValidator.validate")
     @patch("spdx_validator.validators.SemanticValidator.validate")
@@ -255,6 +309,30 @@ class TestValidationEngine:
         assert not result.is_valid  # Will fail Pydantic validation
         mock_schema_validate.assert_not_called()
         mock_semantic_validate.assert_not_called()
+
+    def test_validate_dict_does_not_mutate_caller_document(self) -> None:
+        """Test that normalization does not mutate the caller document."""
+        document = {
+            "packages": [
+                {
+                    "externalRefs": [
+                        {"referenceCategory": "PACKAGE_MANAGER"},
+                        {"referenceCategory": "PERSISTENT_ID"},
+                    ]
+                }
+            ]
+        }
+
+        engine = ValidationEngine(
+            enable_schema_validation=False,
+            enable_semantic_validation=False,
+        )
+        engine.validate_dict(document)
+
+        assert document["packages"][0]["externalRefs"] == [
+            {"referenceCategory": "PACKAGE_MANAGER"},
+            {"referenceCategory": "PERSISTENT_ID"},
+        ]
 
     @patch("pathlib.Path.open", new_callable=mock_open)
     @patch("pathlib.Path.exists")

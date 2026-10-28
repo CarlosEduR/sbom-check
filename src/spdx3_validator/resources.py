@@ -50,13 +50,13 @@ def load_validation_resources() -> ValidationResources:
     # corresponding canonical SPDX 3.0.1 resources.
     with urlopen(
         "https://spdx.org/schema/3.0.1/spdx-json-schema.json",
-        timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
+        timeout=30,
     ) as response:
         schema = json.load(response)
 
     with urlopen(
         "https://spdx.org/rdf/3.0.1/spdx-model.ttl",
-        timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
+        timeout=30,
     ) as response:
         shacl_data = response.read()
 

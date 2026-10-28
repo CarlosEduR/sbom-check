@@ -43,14 +43,19 @@ def load_validation_resources() -> ValidationResources:
     if (version := find_version(SPDX_CONTEXT_URL)) is None:
         raise SpdxValidateError(f"Unknown SPDX version {SPDX_VERSION}")
 
+    # Keep these URLs fixed rather than passing values from SpdxVersion to
+    # urlopen. urllib supports file:// URLs, so using a URL supplied by a
+    # mutable dependency object could turn resource loading into local-file
+    # access. SPDX_VERSION is fixed by this validator, and these are the
+    # corresponding canonical SPDX 3.0.1 resources.
     with urlopen(
-        SPDX_SCHEMA_URL,
+        "https://spdx.org/schema/3.0.1/spdx-json-schema.json",
         timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
     ) as response:
         schema = json.load(response)
 
     with urlopen(
-        SPDX_SHACL_URL,
+        "https://spdx.org/rdf/3.0.1/spdx-model.ttl",
         timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
     ) as response:
         shacl_data = response.read()

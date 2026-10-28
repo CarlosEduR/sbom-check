@@ -18,6 +18,8 @@ from spdx3_validate.spdx_versions import SpdxVersion, find_version
 
 SPDX_VERSION = "3.0.1"
 SPDX_CONTEXT_URL = f"https://spdx.org/rdf/{SPDX_VERSION}/spdx-context.jsonld"
+SPDX_SCHEMA_URL = "https://spdx.org/schema/3.0.1/spdx-json-schema.json"
+SPDX_SHACL_URL = "https://spdx.org/rdf/3.0.1/spdx-model.ttl"
 VALIDATION_RESOURCE_TIMEOUT_SECONDS = 30
 
 
@@ -42,12 +44,14 @@ def load_validation_resources() -> ValidationResources:
         raise SpdxValidateError(f"Unknown SPDX version {SPDX_VERSION}")
 
     with urlopen(
-        version.schema_url, timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS
+        SPDX_SCHEMA_URL,
+        timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
     ) as response:
         schema = json.load(response)
 
     with urlopen(
-        version.shacl_url, timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS
+        SPDX_SHACL_URL,
+        timeout=VALIDATION_RESOURCE_TIMEOUT_SECONDS,
     ) as response:
         shacl_data = response.read()
 
@@ -55,14 +59,12 @@ def load_validation_resources() -> ValidationResources:
     shacl_graph.parse(
         data=shacl_data.decode("utf-8"),
         format="turtle",
-        publicID=version.shacl_url,
+        publicID=SPDX_SHACL_URL,
     )
 
     try:
         validator = schema_validator(schema)
     except jsonschema.exceptions.SchemaError as error:
-        raise SpdxValidateError(
-            f"Invalid schema {version.schema_url}: {error}"
-        ) from error
+        raise SpdxValidateError(f"Invalid schema {SPDX_SCHEMA_URL}: {error}") from error
 
     return ValidationResources(validator, shacl_graph, version)

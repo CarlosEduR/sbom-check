@@ -7,6 +7,8 @@ import json
 from unittest.mock import Mock, patch
 
 from spdx3_validator.resources import (
+    SPDX_SCHEMA_URL,
+    SPDX_SHACL_URL,
     VALIDATION_RESOURCE_TIMEOUT_SECONDS,
     load_validation_resources,
 )
@@ -39,6 +41,10 @@ def test_load_validation_resources_is_cached_per_process():
 
         assert first is second
         assert urlopen.call_count == 2
+        assert [call.args[0] for call in urlopen.call_args_list] == [
+            SPDX_SCHEMA_URL,
+            SPDX_SHACL_URL,
+        ]
         assert all(
             call.kwargs["timeout"] == VALIDATION_RESOURCE_TIMEOUT_SECONDS
             for call in urlopen.call_args_list
